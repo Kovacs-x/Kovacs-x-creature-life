@@ -19,6 +19,7 @@ import { eatFood } from "../actions/eating.js";
 
 import { perceiveFood } from "../senses/foodPerception.js";
 import { senseHunger } from "../senses/hungerSense.js";
+import { senseFoodContact } from "../senses/foodContact.js";
 
 import {
   createFoodObject,
@@ -29,24 +30,40 @@ export interface M1TrialConfig {
   readonly learningEnabled: boolean;
 }
 
-export interface M1TrialResult {
+export interface M1TrialTick {
+  readonly tick: number;
   readonly selectedActionId: string;
+  readonly position: {
+    readonly x: number;
+    readonly y: number;
+  };
+}
+
+export interface M1TrialResult {
+  readonly ticks: readonly M1TrialTick[];
+
   readonly positionBefore: {
     readonly x: number;
     readonly y: number;
   };
+
   readonly positionAfter: {
     readonly x: number;
     readonly y: number;
   };
+
   readonly hungerBefore: HungerState;
   readonly hungerAfter: HungerState;
+
   readonly foodBefore: FoodObjectState;
   readonly foodAfter: FoodObjectState;
+
   readonly ate: boolean;
   readonly reward: number;
+
   readonly brainBefore: BrainState;
   readonly brainAfter: BrainState;
+
   readonly weightChanges: readonly {
     readonly connectionId: string;
     readonly before: number;
@@ -63,7 +80,14 @@ export function runM1Trial(
     y: 0,
   };
 
-  const hungerBefore = createHungerState(0.1, 1);
+  let position = positionBefore;
+
+  const hungerBefore = createHungerState(
+    0.1,
+    1,
+  );
+
+  let hunger = hungerBefore;
 
   const foodBefore = createFoodObject(
     "food-1",
@@ -72,96 +96,200 @@ export function runM1Trial(
     0.5,
   );
 
-  const brainBefore = createM1Brain();
+  let food = foodBefore;
 
-  const foodSignal = perceiveFood(
-    positionBefore,
-    foodBefore,
+  const brainBefore = createM1Brain();
+  let brain = brainBefore;
+
+  const ticks: M1TrialTick[] = [];
+
+  /*
+   * TICK 1
+   *
+   * Creature can see the food but is not yet
+   * physically in contact with it.
+   */
+
+  const tick1FoodSignal = perceiveFood(
+    position,
+    food,
     {
       maxRange: 10,
     },
   );
 
-  const hungerSignal = senseHunger(hungerBefore);
+  const tick1HungerSignal =
+    senseHunger(hunger);
 
-  const brainEvaluation = evaluateM1Brain(
-    brainBefore,
-    hungerSignal,
-    foodSignal,
-  );
-
-  const activations = Object.fromEntries(
-    brainEvaluation.brain.nodes.map((node) => [
-      node.id,
-      node.activation,
-    ]),
-  );
-
-  const eligibilities =
-    deriveConnectionEligibilities(
-      brainEvaluation.brain,
-      activations,
+  const tick1ContactSignal =
+    senseFoodContact(
+      position,
+      food,
+      0.25,
     );
 
-  let positionAfter = positionBefore;
+  const tick1Brain =
+    evaluateM1Brain(
+      brain,
+      tick1HungerSignal,
+      tick1FoodSignal,
+      tick1ContactSignal,
+    );
+
+  brain = tick1Brain.brain;
+
+  ticks.push({
+    tick: 1,
+    selectedActionId:
+      tick1Brain.selectedActionId,
+    position,
+  });
 
   if (
-    brainEvaluation.selectedActionId === "seek" &&
-    foodSignal !== null
+    tick1Brain.selectedActionId ===
+      "seek" &&
+    tick1FoodSignal !== null
   ) {
-    const movement = moveAlongDirection(
-      positionBefore,
-      foodSignal.directionX,
-      foodSignal.directionY,
-      1,
-      {
-        minX: 0,
-        minY: 0,
-        maxX: 10,
-        maxY: 10,
-      },
-    );
+    const movement =
+      moveAlongDirection(
+        position,
+        tick1FoodSignal.directionX,
+        tick1FoodSignal.directionY,
+        1,
+        {
+          minX: 0,
+          minY: 0,
+          maxX: 10,
+          maxY: 10,
+        },
+      );
 
-    positionAfter = movement.position;
+    position = movement.position;
   }
 
-  const eatingResult = eatFood(
-    positionAfter,
-    hungerBefore,
-    foodBefore,
-    0.25,
-  );
+  /*
+   * TICK 2
+   *
+   * Perception is recomputed after movement.
+   *
+   * The creature is now close enough to
+   * physically sense contact with the food.
+   */
 
-  const rewardSignal = deriveEnergyReward(
-    hungerBefore,
-    eatingResult.hunger,
-  );
-
-  const plasticity = applyRewardPlasticity(
-    brainEvaluation.brain,
-    eligibilities,
-    rewardSignal.value,
+  const tick2FoodSignal = perceiveFood(
+    position,
+    food,
     {
-      learningRate: 0.25,
-      minWeight: -1,
-      maxWeight: 1,
-      learningEnabled: config.learningEnabled,
+      maxRange: 10,
     },
   );
 
-  return {
+  const tick2HungerSignal =
+    senseHunger(hunger);
+
+  const tick2ContactSignal =
+    senseFoodContact(
+      position,
+      food,
+      0.25,
+    );
+
+  const tick2Brain =
+    evaluateM1Brain(
+      brain,
+      tick2HungerSignal,
+      tick2FoodSignal,
+      tick2ContactSignal,
+    );
+
+  brain = tick2Brain.brain;
+
+  ticks.push({
+    tick: 2,
     selectedActionId:
-      brainEvaluation.selectedActionId,
+      tick2Brain.selectedActionId,
+    position,
+  });
+
+  const activations =
+    Object.fromEntries(
+      tick2Brain.brain.nodes.map(
+        (node) => [
+          node.id,
+          node.activation,
+        ],
+      ),
+    );
+
+  const eligibilities =
+    deriveConnectionEligibilities(
+      tick2Brain.brain,
+      activations,
+    );
+
+  let ate = false;
+
+  if (
+    tick2Brain.selectedActionId ===
+    "eat"
+  ) {
+    const eatingResult = eatFood(
+      position,
+      hunger,
+      food,
+      0.25,
+    );
+
+    hunger = eatingResult.hunger;
+    food = eatingResult.food;
+    ate = eatingResult.ate;
+  }
+
+  /*
+   * Reward is derived from the actual
+   * biological consequence.
+   */
+
+  const rewardSignal =
+    deriveEnergyReward(
+      hungerBefore,
+      hunger,
+    );
+
+  const plasticity =
+    applyRewardPlasticity(
+      brain,
+      eligibilities,
+      rewardSignal.value,
+      {
+        learningRate: 0.25,
+        minWeight: -1,
+        maxWeight: 1,
+        learningEnabled:
+          config.learningEnabled,
+      },
+    );
+
+  return {
+    ticks,
+
     positionBefore,
-    positionAfter,
+    positionAfter: position,
+
     hungerBefore,
-    hungerAfter: eatingResult.hunger,
+    hungerAfter: hunger,
+
     foodBefore,
-    foodAfter: eatingResult.food,
-    ate: eatingResult.ate,
+    foodAfter: food,
+
+    ate,
     reward: rewardSignal.value,
+
     brainBefore,
-    brainAfter: plasticity.brain,
-    weightChanges: plasticity.changes,
+    brainAfter:
+      plasticity.brain,
+
+    weightChanges:
+      plasticity.changes,
   };
 }
