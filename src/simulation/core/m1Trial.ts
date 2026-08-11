@@ -11,6 +11,7 @@ import {
 } from "../brain/m1Brain.js";
 
 import { deriveConnectionEligibilities } from "../brain/eligibility.js";
+import { mergeEligibilityTrace } from "../brain/eligibilityTrace.js";
 import { applyRewardPlasticity } from "../brain/plasticity.js";
 import { deriveEnergyReward } from "../brain/reward.js";
 
@@ -108,9 +109,6 @@ export function runM1Trial(
 
   /*
    * TICK 1
-   *
-   * Creature perceives food at a distance.
-   * Action competition should select seek.
    */
 
   const tick1FoodSignal = perceiveFood(
@@ -148,6 +146,22 @@ export function runM1Trial(
     position,
   });
 
+  const tick1Activations =
+    Object.fromEntries(
+      tick1Brain.brain.nodes.map(
+        (node) => [
+          node.id,
+          node.activation,
+        ],
+      ),
+    );
+
+  let eligibilityTrace =
+    deriveConnectionEligibilities(
+      tick1Brain.brain,
+      tick1Activations,
+    );
+
   if (
     tick1Brain.selectedActionId ===
       "seek" &&
@@ -172,9 +186,6 @@ export function runM1Trial(
 
   /*
    * TICK 2
-   *
-   * Sensory state is recomputed after
-   * movement.
    */
 
   const tick2FoodSignal = perceiveFood(
@@ -212,12 +223,7 @@ export function runM1Trial(
     position,
   });
 
-  /*
-   * Eligibility is based on the neural
-   * activity that produced the eat decision.
-   */
-
-  const activations =
+  const tick2Activations =
     Object.fromEntries(
       tick2Brain.brain.nodes.map(
         (node) => [
@@ -227,10 +233,19 @@ export function runM1Trial(
       ),
     );
 
-  const eligibilities =
+  const tick2Eligibilities =
     deriveConnectionEligibilities(
       tick2Brain.brain,
-      activations,
+      tick2Activations,
+    );
+
+  eligibilityTrace =
+    mergeEligibilityTrace(
+      eligibilityTrace,
+      tick2Eligibilities,
+      {
+        decay: 0.5,
+      },
     );
 
   let ate = false;
@@ -251,11 +266,6 @@ export function runM1Trial(
     ate = eatingResult.ate;
   }
 
-  /*
-   * Reward comes from the biological
-   * consequence rather than the object.
-   */
-
   const rewardSignal =
     deriveEnergyReward(
       hungerBefore,
@@ -265,7 +275,7 @@ export function runM1Trial(
   const plasticity =
     applyRewardPlasticity(
       brain,
-      eligibilities,
+      eligibilityTrace,
       rewardSignal.value,
       {
         learningRate: 0.25,
