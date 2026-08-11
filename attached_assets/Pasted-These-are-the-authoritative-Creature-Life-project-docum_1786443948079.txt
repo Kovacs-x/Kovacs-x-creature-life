@@ -1,0 +1,64 @@
+These are the authoritative Creature Life project documents.
+
+Your task is documentation population and architecture review only.
+
+Do NOT implement the game.
+Do NOT install dependencies.
+Do NOT scaffold React, Expo, Vite, Node, databases, backends, or rendering systems.
+Do NOT begin M0 or M1 implementation yet.
+
+Do the following:
+
+1. Read all uploaded documents in full:
+   - Creature Life GDD v1.0
+   - Technical Handoff v3.0
+   - AGENTS.md
+   - M1_SPEC.md
+   - CODEX_START_PROMPT.md
+
+2. Replace the existing repository placeholder files with the authoritative content:
+   - /AGENTS.md
+   - /CODEX_START_PROMPT.md
+   - /docs/M1_SPEC.md
+
+3. Convert the uploaded GDD into a faithful Markdown document at:
+   - /docs/GDD.md
+
+   Preserve the full detail and all 16 sections. Do not shorten it into a summary.
+
+4. Convert the uploaded Technical Handoff into a faithful Markdown document at:
+   - /docs/TECHNICAL_HANDOFF.md
+
+   Preserve the engineering detail. Do not simplify or reinterpret it.
+
+5. Update /docs/decisions/README.md to explain that major architecture decisions will be recorded there as ADRs once approved.
+
+6. After the documentation is populated, review the entire repository and check all documents for:
+   - contradictions
+   - unclear requirements
+   - architecture conflicts
+   - missing decisions
+   - M0/M1 scope ambiguity
+   - terminology inconsistencies
+   - implementation risks
+
+7. Specifically assess whether React Native + Expo or a web/PWA-first presentation layer is the stronger direction for Creature Life, given:
+   - iPhone is the primary target
+   - the simulation engine must remain pure TypeScript and independent of UI
+   - eventual touch, voice, haptics, local persistence, and App Store distribution
+   - current development is being done through Replit without a Mac
+
+Do not make that architecture choice automatically. Give a recommendation with trade-offs.
+
+8. Propose the exact M0 architecture and folder/file plan, but DO NOT create the M0 implementation yet.
+
+9. End your response with:
+   A. Documents populated
+   B. Conflicts or inconsistencies found
+   C. Architecture risks
+   D. Recommended presentation stack and why
+   E. Proposed M0 plan
+   F. Decisions requiring approval
+   G. Confirmation that no implementation or dependencies were added
+
+Then stop and wait for approval.

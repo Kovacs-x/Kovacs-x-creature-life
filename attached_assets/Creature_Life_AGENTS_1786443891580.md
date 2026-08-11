@@ -1,6 +1,6 @@
 # AGENTS.md - Creature Life Repository Instructions
 
-These instructions apply repository-wide unless a more specific `AGENTS.md` exists. They are mandatory for Codex and other coding agents.
+These instructions apply repository-wide unless a more specific `AGENTS.md` exists in a subdirectory. They are mandatory for Codex and other coding agents.
 
 ## 1. Project purpose
 

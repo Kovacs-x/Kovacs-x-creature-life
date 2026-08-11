@@ -1,7 +1,7 @@
 # M1 Specification - First Adaptive Creature
 
-**Milestone:** M1
-**Status:** Active after M0 scaffold approval
+**Milestone:** M1  
+**Status:** Active after M0 scaffold approval  
 **Purpose:** Prove the core artificial-life learning loop before adding feature breadth or presentation complexity.
 
 ## Objective
