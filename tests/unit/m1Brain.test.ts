@@ -91,4 +91,52 @@ describe("M1 brain integration", () => {
 
     expect(result.selectedActionId).toBe("idle");
   });
+
+  it("does not select eat when food is not in contact range", () => {
+    const brain = createM1Brain();
+    const food = createFoodObject("food-1", 1, 0);
+
+    const foodSignal = perceiveFood(
+      { x: 0, y: 0 },
+      food,
+      { maxRange: 10 },
+    );
+
+    const result = evaluateM1Brain(
+      brain,
+      senseHunger(createHungerState(0, 1)),
+      foodSignal,
+      {
+        inRange: false,
+      },
+    );
+
+    expect(result.selectedActionId).toBe("seek");
+  });
+
+  it("selects eat when hungry food is in contact range", () => {
+    const brain = createM1Brain();
+    const food = createFoodObject("food-1", 0, 0);
+
+    const foodSignal = perceiveFood(
+      { x: 0, y: 0 },
+      food,
+      { maxRange: 10 },
+    );
+
+    const result = evaluateM1Brain(
+      brain,
+      senseHunger(createHungerState(0, 1)),
+      foodSignal,
+      {
+        inRange: true,
+      },
+    );
+
+    expect(result.eatActivation).toBeGreaterThan(
+      result.seekActivation,
+    );
+
+    expect(result.selectedActionId).toBe("eat");
+  });
 });
