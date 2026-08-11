@@ -8,9 +8,11 @@ import {
 import {
   createM1Brain,
   evaluateM1Brain,
+  M1_NODE_IDS,
 } from "../brain/m1Brain.js";
 
 import { deriveConnectionEligibilities } from "../brain/eligibility.js";
+import { keepEligibilitiesForTarget } from "../brain/actionEligibility.js";
 import { mergeEligibilityTrace } from "../brain/eligibilityTrace.js";
 import { applyRewardPlasticity } from "../brain/plasticity.js";
 import { deriveEnergyReward } from "../brain/reward.js";
@@ -109,6 +111,9 @@ export function runM1Trial(
 
   /*
    * TICK 1
+   *
+   * Food is visible but not yet within
+   * eating range.
    */
 
   const tick1FoodSignal = perceiveFood(
@@ -156,10 +161,19 @@ export function runM1Trial(
       ),
     );
 
-  let eligibilityTrace =
+  const tick1RawEligibilities =
     deriveConnectionEligibilities(
       tick1Brain.brain,
       tick1Activations,
+    );
+
+  let eligibilityTrace =
+    keepEligibilitiesForTarget(
+      tick1Brain.brain,
+      tick1RawEligibilities,
+      actionIdToNodeId(
+        tick1Brain.selectedActionId,
+      ),
     );
 
   if (
@@ -186,6 +200,8 @@ export function runM1Trial(
 
   /*
    * TICK 2
+   *
+   * Perception is recomputed after movement.
    */
 
   const tick2FoodSignal = perceiveFood(
@@ -233,10 +249,19 @@ export function runM1Trial(
       ),
     );
 
-  const tick2Eligibilities =
+  const tick2RawEligibilities =
     deriveConnectionEligibilities(
       tick2Brain.brain,
       tick2Activations,
+    );
+
+  const tick2Eligibilities =
+    keepEligibilitiesForTarget(
+      tick2Brain.brain,
+      tick2RawEligibilities,
+      actionIdToNodeId(
+        tick2Brain.selectedActionId,
+      ),
     );
 
   eligibilityTrace =
@@ -308,4 +333,24 @@ export function runM1Trial(
     weightChanges:
       plasticity.changes,
   };
+}
+
+function actionIdToNodeId(
+  actionId: string,
+): string {
+  switch (actionId) {
+    case "idle":
+      return M1_NODE_IDS.idleOutput;
+
+    case "seek":
+      return M1_NODE_IDS.seekOutput;
+
+    case "eat":
+      return M1_NODE_IDS.eatOutput;
+
+    default:
+      throw new Error(
+        `Unknown M1 action: ${actionId}`,
+      );
+  }
 }
