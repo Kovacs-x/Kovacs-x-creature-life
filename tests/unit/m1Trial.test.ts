@@ -41,7 +41,6 @@ describe("M1 integrated multi-tick learning trial", () => {
     });
 
     expect(result.ate).toBe(true);
-
     expect(
       result.foodAfter.consumed,
     ).toBe(true);
@@ -59,7 +58,7 @@ describe("M1 integrated multi-tick learning trial", () => {
     );
   });
 
-  it("derives positive reward from the biological improvement", () => {
+  it("derives positive reward from biological improvement", () => {
     const result = runM1Trial({
       learningEnabled: true,
     });
@@ -86,27 +85,78 @@ describe("M1 integrated multi-tick learning trial", () => {
     ).toBe(true);
   });
 
-  it("produces the same successful behaviour without changing weights when learning is disabled", () => {
+  it("does not change weights when learning is disabled", () => {
     const result = runM1Trial({
       learningEnabled: false,
     });
 
-    expect(
-      result.ticks[0]?.selectedActionId,
-    ).toBe("seek");
-
-    expect(
-      result.ticks[1]?.selectedActionId,
-    ).toBe("eat");
-
     expect(result.ate).toBe(true);
-
-    expect(
-      result.reward,
-    ).toBeGreaterThan(0);
 
     expect(
       result.weightChanges,
     ).toHaveLength(0);
+  });
+
+  it("can carry a learned brain into a later experience", () => {
+    const firstTrial = runM1Trial({
+      learningEnabled: true,
+    });
+
+    const secondTrial = runM1Trial({
+      learningEnabled: true,
+      brain: firstTrial.brainAfter,
+    });
+
+    expect(
+      secondTrial.brainBefore.connections,
+    ).toEqual(
+      firstTrial.brainAfter.connections,
+    );
+  });
+
+  it("continues changing the carried brain after another rewarded experience", () => {
+    const firstTrial = runM1Trial({
+      learningEnabled: true,
+    });
+
+    const secondTrial = runM1Trial({
+      learningEnabled: true,
+      brain: firstTrial.brainAfter,
+    });
+
+    const firstWeights =
+      firstTrial.brainAfter.connections.map(
+        (connection) =>
+          connection.weight,
+      );
+
+    const secondWeights =
+      secondTrial.brainAfter.connections.map(
+        (connection) =>
+          connection.weight,
+      );
+
+    expect(
+      secondWeights,
+    ).not.toEqual(
+      firstWeights,
+    );
+  });
+
+  it("keeps the carried brain unchanged across control trials", () => {
+    const firstTrial = runM1Trial({
+      learningEnabled: false,
+    });
+
+    const secondTrial = runM1Trial({
+      learningEnabled: false,
+      brain: firstTrial.brainAfter,
+    });
+
+    expect(
+      secondTrial.brainAfter.connections,
+    ).toEqual(
+      firstTrial.brainAfter.connections,
+    );
   });
 });

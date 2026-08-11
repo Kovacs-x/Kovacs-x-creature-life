@@ -28,6 +28,7 @@ import {
 
 export interface M1TrialConfig {
   readonly learningEnabled: boolean;
+  readonly brain?: BrainState;
 }
 
 export interface M1TrialTick {
@@ -98,7 +99,9 @@ export function runM1Trial(
 
   let food = foodBefore;
 
-  const brainBefore = createM1Brain();
+  const brainBefore =
+    config.brain ?? createM1Brain();
+
   let brain = brainBefore;
 
   const ticks: M1TrialTick[] = [];
@@ -106,8 +109,8 @@ export function runM1Trial(
   /*
    * TICK 1
    *
-   * Creature can see the food but is not yet
-   * physically in contact with it.
+   * Creature perceives food at a distance.
+   * Action competition should select seek.
    */
 
   const tick1FoodSignal = perceiveFood(
@@ -170,10 +173,8 @@ export function runM1Trial(
   /*
    * TICK 2
    *
-   * Perception is recomputed after movement.
-   *
-   * The creature is now close enough to
-   * physically sense contact with the food.
+   * Sensory state is recomputed after
+   * movement.
    */
 
   const tick2FoodSignal = perceiveFood(
@@ -211,6 +212,11 @@ export function runM1Trial(
     position,
   });
 
+  /*
+   * Eligibility is based on the neural
+   * activity that produced the eat decision.
+   */
+
   const activations =
     Object.fromEntries(
       tick2Brain.brain.nodes.map(
@@ -246,8 +252,8 @@ export function runM1Trial(
   }
 
   /*
-   * Reward is derived from the actual
-   * biological consequence.
+   * Reward comes from the biological
+   * consequence rather than the object.
    */
 
   const rewardSignal =
