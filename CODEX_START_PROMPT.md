@@ -10,7 +10,7 @@ Before changing any code, do all of the following:
 
 1. Read `AGENTS.md` in full.
 2. Read `docs/TECHNICAL_HANDOFF.md` in full.
-3. Read the Creature Life GDD v1.0 available in `docs/gdd/` (or the attached GDD if it has not yet been committed).
+3. Read the Creature Life GDD v1.0 available in `docs/GDD.md` (or the attached GDD if it has not yet been committed).
 4. Read `docs/M1_SPEC.md`.
 5. Inspect the entire current repository tree and relevant Git history.
 6. Run the existing build and tests if a runnable project already exists.

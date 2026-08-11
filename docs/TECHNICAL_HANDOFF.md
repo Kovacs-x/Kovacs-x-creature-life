@@ -169,11 +169,10 @@ creature-life/
 ├── tsconfig.json
 ├── vite.config.ts
 ├── docs/
-│   ├── TECHNICAL_HANDOFF.md
+│   ├── GDD.md
 │   ├── M1_SPEC.md
-│   ├── gdd/
-│   │   └── Creature_Life_GDD_v1.0.pdf
-│   └── adr/
+│   ├── TECHNICAL_HANDOFF.md
+│   └── decisions/
 ├── src/
 │   ├── app/
 │   ├── simulation/
@@ -591,7 +590,7 @@ docs(adr): record action-selection scoring decision
 
 ## 25. Architecture Decision Records
 
-Use `docs/adr/ADR-XXXX-title.md` for decisions that materially alter
+Use `docs/decisions/ADR-XXXX-title.md` for decisions that materially alter
 boundaries, persistence, brain architecture, rendering, networking or
 simulation semantics. Each ADR contains status, context/problem, options,
 decision, trade-offs, migration/backwards-compatibility impact and testing
