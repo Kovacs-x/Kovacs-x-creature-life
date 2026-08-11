@@ -1,0 +1,115 @@
+import type { BrainState } from "../core/contracts.js";
+import type { FoodPerceptionSignal } from "../senses/foodPerception.js";
+import type { HungerSenseSignal } from "../senses/hungerSense.js";
+
+import { selectHighestActivation } from "../actions/competition.js";
+import {
+  createBrainState,
+  evaluateBrain,
+} from "./network.js";
+
+export const M1_NODE_IDS = {
+  biasInput: "input:bias",
+  hungerInput: "input:hunger",
+  foodInput: "input:food",
+  idleOutput: "action:idle",
+  seekOutput: "action:seek",
+} as const;
+
+export interface M1BrainEvaluation {
+  readonly brain: BrainState;
+  readonly idleActivation: number;
+  readonly seekActivation: number;
+  readonly selectedActionId: string;
+}
+
+export function createM1Brain(): BrainState {
+  return createBrainState(
+    [
+      {
+        id: M1_NODE_IDS.biasInput,
+        module: "input",
+        activation: 0,
+      },
+      {
+        id: M1_NODE_IDS.hungerInput,
+        module: "input",
+        activation: 0,
+      },
+      {
+        id: M1_NODE_IDS.foodInput,
+        module: "input",
+        activation: 0,
+      },
+      {
+        id: M1_NODE_IDS.idleOutput,
+        module: "action",
+        activation: 0,
+      },
+      {
+        id: M1_NODE_IDS.seekOutput,
+        module: "action",
+        activation: 0,
+      },
+    ],
+    [
+      {
+        id: "bias-to-idle",
+        sourceNodeId: M1_NODE_IDS.biasInput,
+        targetNodeId: M1_NODE_IDS.idleOutput,
+        weight: 0.35,
+        enabled: true,
+      },
+      {
+        id: "hunger-to-seek",
+        sourceNodeId: M1_NODE_IDS.hungerInput,
+        targetNodeId: M1_NODE_IDS.seekOutput,
+        weight: 0.3,
+        enabled: true,
+      },
+      {
+        id: "food-to-seek",
+        sourceNodeId: M1_NODE_IDS.foodInput,
+        targetNodeId: M1_NODE_IDS.seekOutput,
+        weight: 0.3,
+        enabled: true,
+      },
+    ],
+  );
+}
+
+export function evaluateM1Brain(
+  brain: BrainState,
+  hunger: HungerSenseSignal,
+  food: FoodPerceptionSignal | null,
+): M1BrainEvaluation {
+  const evaluation = evaluateBrain(brain, {
+    [M1_NODE_IDS.biasInput]: 1,
+    [M1_NODE_IDS.hungerInput]: hunger.hungerLevel,
+    [M1_NODE_IDS.foodInput]: food?.strength ?? 0,
+  });
+
+  const idleActivation =
+    evaluation.activations[M1_NODE_IDS.idleOutput] ?? 0;
+
+  const seekActivation =
+    evaluation.activations[M1_NODE_IDS.seekOutput] ?? 0;
+
+  const selection = selectHighestActivation([
+    {
+      actionId: "idle",
+      activation: idleActivation,
+    },
+    {
+      actionId: "seek",
+      activation: seekActivation,
+    },
+  ]);
+
+  return {
+    brain: evaluation.brain,
+    idleActivation,
+    seekActivation,
+    selectedActionId: selection.selectedActionId,
+  };
+}
