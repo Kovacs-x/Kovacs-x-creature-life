@@ -15,12 +15,17 @@ export function evaluateBrain(
   brain: BrainState,
   externalActivations: ExternalActivations,
 ): BrainEvaluationResult {
-  const activations: Record<string, number> = {};
+  const sourceActivations: Record<string, number> = {};
+  const weightedSums: Record<string, number> = {};
 
   for (const node of brain.nodes) {
-    const externalValue = externalActivations[node.id] ?? 0;
+    const externalValue =
+      externalActivations[node.id] ?? 0;
 
-    activations[node.id] = clampActivation(externalValue);
+    sourceActivations[node.id] =
+      clampActivation(externalValue);
+
+    weightedSums[node.id] = 0;
   }
 
   for (const connection of brain.connections) {
@@ -28,7 +33,10 @@ export function evaluateBrain(
       continue;
     }
 
-    const sourceActivation = activations[connection.sourceNodeId];
+    const sourceActivation =
+      sourceActivations[
+        connection.sourceNodeId
+      ];
 
     if (sourceActivation === undefined) {
       throw new Error(
@@ -36,23 +44,47 @@ export function evaluateBrain(
       );
     }
 
-    const targetActivation = activations[connection.targetNodeId];
+    const currentTargetSum =
+      weightedSums[
+        connection.targetNodeId
+      ];
 
-    if (targetActivation === undefined) {
+    if (currentTargetSum === undefined) {
       throw new Error(
         `Brain connection references missing target node: ${connection.targetNodeId}`,
       );
     }
 
-    activations[connection.targetNodeId] = clampActivation(
-      targetActivation + sourceActivation * connection.weight,
-    );
+    weightedSums[
+      connection.targetNodeId
+    ] =
+      currentTargetSum +
+      sourceActivation *
+        connection.weight;
   }
 
-  const nodes: BrainNodeState[] = brain.nodes.map((node) => ({
-    ...node,
-    activation: activations[node.id] ?? 0,
-  }));
+  const activations: Record<string, number> = {};
+
+  for (const node of brain.nodes) {
+    const externalActivation =
+      sourceActivations[node.id] ?? 0;
+
+    const incomingActivation =
+      weightedSums[node.id] ?? 0;
+
+    activations[node.id] =
+      clampActivation(
+        externalActivation +
+          incomingActivation,
+      );
+  }
+
+  const nodes: BrainNodeState[] =
+    brain.nodes.map((node) => ({
+      ...node,
+      activation:
+        activations[node.id] ?? 0,
+    }));
 
   return {
     brain: {
@@ -70,22 +102,36 @@ export function createBrainState(
   assertUniqueNodeIds(nodes);
   assertUniqueConnectionIds(connections);
 
-  const nodeIds = new Set(nodes.map((node) => node.id));
+  const nodeIds = new Set(
+    nodes.map((node) => node.id),
+  );
 
   for (const connection of connections) {
-    if (!nodeIds.has(connection.sourceNodeId)) {
+    if (
+      !nodeIds.has(
+        connection.sourceNodeId,
+      )
+    ) {
       throw new Error(
         `Connection ${connection.id} references missing source node ${connection.sourceNodeId}.`,
       );
     }
 
-    if (!nodeIds.has(connection.targetNodeId)) {
+    if (
+      !nodeIds.has(
+        connection.targetNodeId,
+      )
+    ) {
       throw new Error(
         `Connection ${connection.id} references missing target node ${connection.targetNodeId}.`,
       );
     }
 
-    if (!Number.isFinite(connection.weight)) {
+    if (
+      !Number.isFinite(
+        connection.weight,
+      )
+    ) {
       throw new RangeError(
         `Connection ${connection.id} must have a finite weight.`,
       );
@@ -94,25 +140,42 @@ export function createBrainState(
 
   return {
     schemaVersion: 1,
-    nodes: nodes.map((node) => ({ ...node })),
-    connections: connections.map((connection) => ({ ...connection })),
+    nodes: nodes.map((node) => ({
+      ...node,
+    })),
+    connections: connections.map(
+      (connection) => ({
+        ...connection,
+      }),
+    ),
   };
 }
 
-function clampActivation(value: number): number {
+function clampActivation(
+  value: number,
+): number {
   if (!Number.isFinite(value)) {
-    throw new RangeError("Brain activation must be finite.");
+    throw new RangeError(
+      "Brain activation must be finite.",
+    );
   }
 
-  return Math.min(1, Math.max(0, value));
+  return Math.min(
+    1,
+    Math.max(0, value),
+  );
 }
 
-function assertUniqueNodeIds(nodes: readonly BrainNodeState[]): void {
+function assertUniqueNodeIds(
+  nodes: readonly BrainNodeState[],
+): void {
   const ids = new Set<string>();
 
   for (const node of nodes) {
     if (ids.has(node.id)) {
-      throw new Error(`Duplicate brain node id: ${node.id}`);
+      throw new Error(
+        `Duplicate brain node id: ${node.id}`,
+      );
     }
 
     ids.add(node.id);
@@ -126,7 +189,9 @@ function assertUniqueConnectionIds(
 
   for (const connection of connections) {
     if (ids.has(connection.id)) {
-      throw new Error(`Duplicate brain connection id: ${connection.id}`);
+      throw new Error(
+        `Duplicate brain connection id: ${connection.id}`,
+      );
     }
 
     ids.add(connection.id);
