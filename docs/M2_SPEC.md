@@ -1,7 +1,7 @@
 # M2 Specification - First Persistent Memory-Guided Creature
 
 **Milestone:** M2  
-**Status:** Specification pending approval  
+**Status:** Active after M1 acceptance  
 **Prerequisite:** M1 accepted  
 **Purpose:** Prove that past sensory experience can persist internally and influence later behaviour after direct perception is lost, without giving the Creature omniscient access to world state.
 
@@ -18,10 +18,10 @@ The Creature must be able to:
 3. lose direct sensory access to the food;
 4. retain the memory across later simulation ticks;
 5. recall an imperfect representation of the earlier experience;
-6. allow that recalled signal to participate in normal neural/action competition;
+6. allow that recalled information to participate in normal neural/action competition;
 7. behave differently because of the remembered experience;
 8. gradually forget or weaken the memory over simulation time;
-9. correct or replace stale memory when new direct perception becomes available.
+9. correct stale memory when new direct perception becomes available.
 
 The Creature must not receive hidden access to the food's current coordinates while the food is not perceptible.
 
@@ -35,7 +35,7 @@ M2 is complete only when memory-guided behaviour is experimentally distinguishab
 
 ---
 
-# 2. What M2 Is Intended to Prove
+## 2. What M2 Is Intended to Prove
 
 M1 established:
 
@@ -55,67 +55,103 @@ biological consequence
 reward
         ↓
 learning
-3. Scope
+```
+
+M2 must establish:
+
+```text
+past perception
+        ↓
+memory encoding
+        ↓
+persistent internal trace
+        ↓
+time passes
+direct perception disappears
+        ↓
+memory recall
+        ↓
+current biology
++
+current perception
++
+recalled information
+        ↓
+brain activation
+        ↓
+action competition
+        ↓
+memory-influenced behaviour
+```
+
+The key new causal capability is:
+
+**Behaviour influenced by information that is no longer present in the current sensory stream.**
+
+---
+
+## 3. Scope
 
 M2 implements only the smallest memory system needed to prove genuine memory-guided behaviour.
 
 M2 includes:
 
-sensory-derived memory encoding;
-persistent memory state;
-memory age;
-deterministic memory decay;
-memory confidence/strength;
-recall of previously perceived food information;
-memory influence on neural activation;
-memory influence on action competition;
-movement informed by recalled sensory direction;
-forgetting/expiration;
-correction by new sensory evidence;
-memory serialization;
-deterministic memory replay;
-memory telemetry;
-memory-disabled controls;
-no-prior-perception controls;
-stale-memory experiments.
+- sensory-derived memory encoding;
+- persistent memory state;
+- memory age;
+- deterministic memory decay;
+- memory confidence/strength;
+- recall of previously perceived food information;
+- memory influence on neural activation;
+- memory influence on action competition;
+- movement informed by recalled sensory direction;
+- forgetting/expiration;
+- correction by new sensory evidence;
+- sensory occlusion;
+- memory serialization;
+- deterministic replay;
+- memory telemetry;
+- memory-disabled controls;
+- no-prior-perception controls;
+- stale-memory experiments.
 
 M2 does NOT include:
 
-human-like episodic memory;
-language memory;
-autobiographical narrative;
-semantic knowledge graphs;
-multiple advanced memory systems;
-procedural skill learning;
-social memory;
-relationship memory;
-emotional autobiographical memory;
-long-term cognitive maps;
-pathfinding;
-navigation meshes;
-hippocampal simulation;
-sleep consolidation;
-dreams;
-advanced memory reconsolidation;
-genetics affecting memory;
-developmental memory differences;
-personality;
-curiosity;
-teaching;
-multiple Creatures;
-reproduction;
-culture.
+- human-like episodic memory;
+- autobiographical narrative;
+- semantic knowledge graphs;
+- language memory;
+- social memory;
+- relationship memory;
+- emotional autobiographical memory;
+- long-term cognitive maps;
+- pathfinding;
+- navigation meshes;
+- hippocampal simulation;
+- sleep consolidation;
+- dreams;
+- genetics affecting memory;
+- developmental memory differences;
+- personality;
+- curiosity;
+- teaching;
+- multiple Creatures;
+- reproduction;
+- culture.
 
 Those capabilities belong to later milestones.
 
-4. Architectural Principle
+---
+
+## 4. Architectural Principle
 
 Memory is an internal reconstruction of past sensory experience.
 
 Memory must NOT be a second channel into world truth.
 
-The allowed information flow is:
+Allowed information flow:
 
+```text
 WORLD TRUTH
     ↓
 SENSORY TRANSFORMATION
@@ -125,9 +161,11 @@ PERCEIVED SIGNAL
 MEMORY ENCODING
     ↓
 MEMORY TRACE
+```
 
-Later recall is:
+Later recall:
 
+```text
 MEMORY TRACE
     ↓
 DECAY / RETRIEVAL
@@ -135,108 +173,131 @@ DECAY / RETRIEVAL
 RECALLED SIGNAL
     ↓
 BRAIN
+```
 
-The forbidden information flow is:
+Forbidden information flow:
 
+```text
 MEMORY
     ↓
-query current food object
+query current hidden food object
     ↓
-retrieve exact hidden location
+retrieve current exact location
+```
 
 Memory may only contain information that could have been derived from what the Creature previously perceived.
 
-5. Memory Representation
+---
 
-The minimum M2 memory trace should contain conceptually equivalent information to:
+## 5. Memory Representation
 
-MemoryTrace
+The minimum M2 food memory trace should contain conceptually equivalent information to:
+
+```text
+FoodMemoryTrace
 
 kind
 source category
 encoded tick
 age
-confidence / strength
-remembered direction
+confidence
+remembered direction X
+remembered direction Y
 remembered perceptual strength
+```
 
-Exact TypeScript names may differ if implementation gives a justified reason.
+Exact TypeScript names may differ if there is a justified architectural reason.
 
-A memory trace may optionally contain a source object identifier for diagnostics and traceability.
+A memory trace may contain a source object identifier for diagnostics and traceability.
 
-An object identifier must NOT be used to query the current hidden world object during recall.
+That identifier must NOT be used during recall to query the current hidden object's position or state.
 
 The behavioural system must work from the stored memory content itself.
 
-6. No Direct World Coordinates in Cognitive Memory
+---
 
-M2 must not store fields equivalent to:
+## 6. No Direct World Coordinates in Cognitive Memory
 
+M2 cognitive memory must not store fields equivalent to:
+
+```text
 foodX
 foodY
 targetX
 targetY
 worldTargetPosition
-lastKnownExactWorldPosition
+lastKnownExactFoodPosition
+```
 
-inside the Creature's cognitive memory representation.
+Instead it should retain an imperfect sensory-derived representation such as:
 
-The memory should instead retain an imperfect sensory-derived representation, such as:
-
+```text
 rememberedDirectionX
 rememberedDirectionY
 rememberedStrength
 confidence
 age
+```
 
-This is intentionally limited.
+If the Creature subsequently moves, the remembered direction may become inaccurate.
 
-If the Creature moves, the remembered direction may become inaccurate.
+That imperfection is intentional.
 
-That imperfection is desirable because it demonstrates that memory is not hidden omniscience.
+A memory that can become stale or wrong provides evidence that the Creature is not receiving omniscient world information.
 
-7. Sensory Occlusion
+---
 
-M2 must introduce a legitimate distinction between:
+## 7. Sensory Occlusion
 
-food exists in world
+M2 must distinguish:
 
-and:
+```text
+food physically exists
+```
 
+from:
+
+```text
 Creature can currently perceive food
+```
 
-A food object may remain physically present while being unavailable to the food-perception system.
-
-The occlusion mechanism belongs to the simulation/sensory layer.
-
-The test must NOT fake memory by simply passing a desired remembered signal directly into the brain.
+Food may remain present while being unavailable to the food-perception system.
 
 Conceptually:
 
+```text
 Food exists
      ↓
-visibility / occlusion rule
+visibility / occlusion state
      ↓
-perceiveFood(...)
+sensory transformation
      ↓
-signal OR null
+food signal OR null
+```
 
 When occluded:
 
-food still exists
-perception = null
+```text
+food physically exists = true
+direct perception = null
+```
 
-This is different from the M1 adversarial case where food became unavailable because it was consumed or removed.
+Occlusion must be implemented in the simulation/sensory pathway.
 
-8. Memory Encoding
+Tests must not fake memory by injecting a desired remembered signal directly into the brain.
 
-A memory trace must be created or refreshed because a valid sensory signal was experienced.
+---
 
-Memory encoding must not inspect raw world coordinates independently.
+## 8. Memory Encoding
+
+A memory trace must be created or refreshed because a valid sensory signal was actually experienced.
+
+Memory encoding must consume the sensory representation rather than independently inspecting world coordinates.
 
 Example:
 
-food perception:
+```text
+direct perception:
 
 directionX = 1
 directionY = 0
@@ -253,15 +314,19 @@ rememberedDirectionY = 0
 rememberedPerceptualStrength = 0.8
 confidence = initial confidence
 age = 0
+```
 
-A memory trace must therefore be causally attributable to a real perception event.
+Every encoded M2 food memory must therefore be causally attributable to a legitimate perception event.
 
-9. Memory Persistence
+---
 
-After direct perception disappears, the memory trace must remain present for more than one simulation tick.
+## 9. Memory Persistence
+
+After direct perception disappears, the memory trace must remain available for subsequent simulation ticks.
 
 Example:
 
+```text
 Tick 1
 food perceived
 memory encoded
@@ -274,433 +339,491 @@ Tick 3
 food still occluded
 memory remains but weaker
 
-Tick N
-memory confidence becomes too weak
-memory expires or ceases influencing behaviour
+Later
+memory becomes too weak
+memory expires
+```
 
-Persistence must be based on simulation time or simulation ticks.
+Persistence must depend on simulation time or simulation ticks.
 
 Wall-clock time must not determine forgetting.
 
-10. Memory Decay
+---
+
+## 10. Memory Decay
 
 M2 memory must be imperfect.
 
-Memory confidence or strength must deterministically weaken as simulation time passes without reinforcement or refreshing perception.
+Memory confidence must deterministically weaken when simulation time passes without a new perception refreshing it.
 
-The implementation must define explicit constants or configuration for:
+Implementation must define prospective constants or configuration for:
 
-initial encoding strength or confidence;
-decay rate;
-minimum usable confidence or expiration threshold.
+- initial confidence;
+- decay per simulation interval;
+- minimum usable confidence or expiration threshold.
 
-Those values must be defined before behavioural acceptance results are evaluated.
+These values must be defined before behavioural acceptance results are evaluated.
 
-Do not tune the constants after seeing an acceptance-test result solely to force the expected behavioural outcome.
+They must not be retroactively tuned solely to force a desired test result.
 
 Decay must be deterministic.
 
-11. Recall
+---
 
-When no direct food perception is available, a sufficiently strong memory trace may produce a recalled sensory-like signal.
+## 11. Recall
+
+When direct perception is unavailable, a sufficiently strong stored memory may produce a recall signal.
 
 Conceptually:
 
+```text
 stored memory
     ↓
-age / confidence check
+age / confidence evaluation
     ↓
 recall transformation
     ↓
 MemoryRecallSignal
+```
 
-A recalled signal should contain enough information for the brain to represent:
+The recall signal should contain enough information to represent:
 
-remembered food evidence;
-memory confidence;
-remembered direction.
+- remembered food evidence;
+- memory confidence;
+- remembered direction.
 
-Recall must not access current hidden food coordinates.
+Recall must not access the hidden food's current coordinates.
 
-12. Current Perception vs Memory
+---
 
-Direct perception and memory must remain distinguishishable internal signals.
+## 12. Direct Perception and Memory Must Remain Distinct
 
-The brain must not be told:
+The system must distinguish:
 
-foodVisible = true
-
-when only memory is active.
-
-Conceptually:
-
+```text
 currentFoodSignal
+```
+
+from:
+
+```text
 rememberedFoodSignal
+```
 
-must remain distinct.
+The brain must not be told that food is currently visible when only memory is active.
 
-This distinction is required for:
+Direct perception means:
 
-debugging;
-action competition;
-stale-memory tests;
-future expansion of the cognitive architecture.
+```text
+evidence about the world now
+```
 
-Direct perception represents evidence about the world now.
+Memory means:
 
-Memory represents retained information about past perception.
+```text
+retained information about an earlier perception
+```
 
-13. Brain Integration
+This distinction must remain observable in telemetry and tests.
+
+---
+
+## 13. Brain Integration
 
 Memory must influence behaviour through the normal neural architecture.
 
-The brain should gain one or more memory-related input nodes, conceptually similar to:
+The M2 brain should gain one or more memory-related input nodes, conceptually similar to:
 
+```text
 input:remembered-food
+```
 
 or an equivalent general mechanism.
 
-Memory strength or confidence contributes activation through weighted neural connections.
+Memory confidence contributes activation through weighted neural connections.
 
 Memory must NOT directly issue:
 
+```text
 seek
 move
 eat
+```
 
 commands.
 
-The causal path must remain:
+Required causal path:
 
+```text
 memory recall
     ↓
 brain input activation
     ↓
-weighted network
+weighted neural network
     ↓
 candidate action activations
     ↓
-competition
+generic competition
     ↓
 selected action
-14. Memory-Guided Movement
+```
 
-If SEEK wins while direct perception is absent but a valid recalled directional signal exists, movement may use that remembered directional estimate.
+---
 
-The movement executor must never receive the food object's hidden current position.
+## 14. Memory-Guided Movement
+
+If SEEK wins while direct perception is absent but valid memory recall exists, movement may use the remembered directional estimate.
 
 Conceptually:
 
+```text
 SEEK selected
+      ↓
+direct perceived direction available?
+      ↓ yes
+use direct direction
 
-direct perception available?
-    ↓
-use direct perceived direction
+      ↓ no
+valid recalled direction available?
+      ↓ yes
+use recalled direction
+```
 
-otherwise valid memory recall?
-    ↓
-use remembered direction
+The movement executor must never be supplied with the hidden current food position.
 
-This direction-source resolution is an action-execution concern.
+Memory does not cause movement by itself.
 
-It must not bypass action competition.
+SEEK must first win normal action competition.
 
-A memory signal must not automatically produce movement unless the corresponding action wins normal competition.
+---
 
-15. Stale Memory
+## 15. Stale Memory
 
 Memory must be capable of being wrong.
 
 This is a required property.
 
-If food moves while occluded:
+Example:
 
-Creature remembers old direction
-food moves elsewhere
-Creature cannot see movement
+```text
+Tick 1
+Creature perceives food east
 
-then the Creature must NOT magically update its memory.
+Tick 2
+food becomes occluded
 
-Its behaviour may therefore initially be directed toward the old remembered direction.
+Tick 3
+food secretly moves west
+```
 
-This is positive evidence that the Creature does not have omniscient world access.
+Before the Creature directly perceives the new position:
 
-16. Memory Correction
+```text
+memory should still represent east
+```
 
-When new direct sensory evidence becomes available, it must be capable of refreshing, correcting, or replacing stale memory.
+or a decayed version of that earlier representation.
+
+It must NOT automatically change to west.
+
+This is evidence against omniscient world access.
+
+---
+
+## 16. Memory Correction
+
+When new direct sensory evidence becomes available, it must be capable of correcting or replacing stale memory.
 
 Example:
 
+```text
 Tick 1
 food perceived east
 
 Tick 2
-food hidden
-Creature remembers east
+food occluded
+memory says east
 
 Tick 3
-food secretly moves west
-Creature still remembers east
+hidden food moves west
+memory still says east
 
 Tick 4
-food becomes visible west
-new perception detected
-memory updates toward west
+food becomes directly visible west
+memory refreshes toward west
+```
 
-New direct perception should generally have greater epistemic authority than an older recalled trace.
+Current legitimate sensory evidence has greater epistemic authority than stale remembered evidence.
 
-The exact correction mechanism may remain simple in M2.
+---
 
-17. Forgetting
+## 17. Forgetting
 
-A sufficiently old or weak memory must cease influencing action selection.
-
-The Creature must not remember food perfectly forever.
+A sufficiently weak or old memory must cease influencing action selection.
 
 Expected qualitative behaviour:
 
+```text
 recent memory
-→ meaningful influence
+→ strong influence
 
 older memory
 → weaker influence
 
 expired memory
-→ no meaningful influence
+→ no memory influence
+```
 
-The expiration mechanism may use:
+Expiration may use:
 
-confidence threshold;
-finite lifetime;
-deterministic strength decay;
-or a combination of these.
+- confidence threshold;
+- deterministic lifetime;
+- deterministic strength decay;
+- or a combination.
 
 The mechanism must be explicit and testable.
 
-18. Primary M2 Behavioural Probe
+---
 
-The primary behavioural experiment must be defined before evaluating results.
+## 18. Primary M2 Behavioural Probe
+
+The primary behavioural experiment is defined before implementation results are evaluated.
 
 Locked scenario:
 
-Initial world:
+```text
+Initial condition:
 
-Creature is hungry
-Food is positioned perceptibly in one direction
+Creature hungry
+Food perceptible in one direction
+
 
 Tick 1:
+
 food visible
-Creature receives direct food perception
-memory encoded
+→ direct food perception
+→ memory encoded
+
 
 Following tick:
+
 food remains physically present
-food becomes perceptually occluded
-direct food perception = null
+food becomes occluded
+direct food signal = null
+
 
 Memory-enabled Creature:
-recalled food signal exists
-memory contributes to SEEK activation
-
-Memory-disabled control:
-no recalled signal exists
-
-Primary predefined behavioural metric:
-
-After direct perception disappears, does memory cause SEEK activation and remembered-direction movement to exceed the otherwise identical memory-disabled control?
-
-The experiment must include both:
-
-action-selection evidence;
-physical movement evidence.
-
-Expected qualitative result:
-
-memory-enabled Creature:
 
 memory recalled
-→ SEEK activation elevated
-→ SEEK wins or is measurably strengthened
-→ movement occurs in remembered direction
+→ remembered-food neural activation
+→ increased SEEK activation
+→ remembered-direction behaviour
 
 
-memory-disabled control:
+Memory-disabled control:
 
-direct perception absent
-→ no recall
+no usable recall
 → lower SEEK activation
-→ IDLE wins or remembered-direction movement is absent
+→ no equivalent remembered-direction behaviour
+```
 
-Do not replace the metric after seeing the result merely to obtain a passing test.
+### Predefined primary metric
 
-19. Acceptance Criteria
-AC1 - Memory Encoding
+After direct perception disappears:
 
-A valid direct food perception creates or refreshes a memory trace.
+**Does the memory-enabled Creature produce greater SEEK activation and greater remembered-direction movement than an otherwise equivalent memory-disabled control?**
 
-The memory content must be derived from sensory information rather than raw world coordinates.
+The experiment must examine both:
 
-AC2 - Memory Persistence
+1. action-selection evidence;
+2. physical movement evidence.
 
-The memory remains available after direct perception disappears.
+The metric must not be replaced after seeing results merely to create a passing test.
 
-The trace must survive subsequent simulation ticks without direct sensory refresh.
+---
 
-AC3 - Memory Decay
+## 19. Acceptance Criteria
 
-Memory confidence or strength decreases predictably as simulation time passes without refreshing perception.
+### AC1 - Memory Encoding
 
-Eventually the trace must become unusable or expire.
+A valid direct food perception creates or refreshes a food memory trace.
 
-AC4 - Recall
+The memory must be derived from sensory information rather than raw world coordinates.
 
-A sufficiently strong stored memory produces a recall signal when appropriate.
+### AC2 - Memory Persistence
 
-No current hidden world-object query may be required to reconstruct the remembered information.
+Memory remains available after direct perception disappears.
 
-AC5 - Memory Brain Integration
+The trace survives subsequent simulation ticks without direct sensory refresh.
 
-The recalled signal influences neural activation through weighted connections.
+### AC3 - Memory Decay
 
-Memory does not directly command SEEK, MOVE, or EAT.
+Memory confidence decreases predictably as simulation time passes without new direct perception.
 
-AC6 - Competitive Behaviour
+Eventually the memory becomes unusable or expires.
 
-After direct food perception disappears, the memory-enabled Creature must show greater food-seeking activation than an otherwise equivalent memory-disabled control where the difference is causally attributable to recalled memory.
+### AC4 - Recall
 
-AC7 - Memory-Guided Movement
+A sufficiently strong stored memory produces a recall signal.
 
-When memory contributes to a winning SEEK action, Creature movement may follow the recalled directional estimate.
+Recall does not query the hidden world object for its current position.
 
-The movement must not use hidden current food coordinates.
+### AC5 - Memory Brain Integration
 
-AC8 - Stale Memory / No Omniscience
+Recall influences neural activation through weighted connections.
 
-If food changes position while occluded, the Creature must not automatically know the new location.
+Memory cannot directly command SEEK, MOVE or EAT.
 
-Until new direct perception occurs, recall must continue reflecting the previously encoded information or deterministic decay from it.
+### AC6 - Competitive Behaviour
 
-AC9 - Correction by New Evidence
+After direct food perception disappears, the memory-enabled Creature shows greater food-seeking activation than an otherwise equivalent memory-disabled control.
 
-When food becomes directly visible in a different direction, the Creature must respond to the new sensory evidence and update or refresh memory accordingly.
+The difference must be causally attributable to memory recall.
 
-A stale memory must not permanently override valid direct perception.
+### AC7 - Memory-Guided Movement
 
-AC10 - Forgetting Control
+When memory contributes to a winning SEEK action, the Creature can move according to the recalled directional estimate.
 
-After sufficient deterministic decay or expiration, a previously remembered Creature must cease showing the same memory-driven behaviour.
+Hidden current food coordinates are not used.
 
-Its behaviour should approach the otherwise equivalent memory-disabled condition.
+### AC8 - Stale Memory / No Omniscience
 
-AC11 - Serialization
+If food changes position while occluded, the Creature does not automatically know the new position.
 
-A checkpoint containing meaningful M2 state must round-trip through serialization without changing relevant state, including:
+Recall continues to reflect the earlier sensory-derived information or its deterministic decay.
 
-Creature position;
-biology;
-brain weights;
-memory trace;
-memory age;
-memory confidence;
-remembered direction;
-eligibility state required for ongoing learning;
-simulation tick/time;
-RNG state where applicable.
+### AC9 - Correction by New Evidence
 
-A save/reload sequence must produce the same later result as uninterrupted execution within deterministic scope.
+When food becomes directly perceptible in a different direction, new perception corrects or refreshes memory.
 
-AC12 - Determinism
+Stale memory must not permanently override valid direct sensory evidence.
+
+### AC10 - Forgetting Control
+
+After sufficient deterministic decay or expiration, previously remembered food ceases producing the same memory-driven behaviour.
+
+Behaviour approaches the equivalent memory-disabled condition.
+
+### AC11 - Serialization
+
+Meaningful M2 state round-trips through serialization without changing relevant state, including:
+
+- Creature position;
+- biology;
+- brain weights;
+- food memory;
+- memory age;
+- memory confidence;
+- remembered direction;
+- eligibility trace required for learning;
+- simulation tick/time;
+- RNG state where applicable.
+
+Save/reload continuation must match uninterrupted continuation within deterministic scope.
+
+### AC12 - Determinism
 
 Identical:
 
-initial world;
-Creature state;
-brain;
-memory state;
-simulation timing;
-occlusion sequence;
-seeded randomness where applicable;
+- initial world;
+- Creature state;
+- brain;
+- memory state;
+- simulation timing;
+- occlusion sequence;
+- seeded randomness where applicable;
 
-must reproduce the same:
+must reproduce identical:
 
-memory encoding;
-memory decay;
-recall;
-neural activations;
-actions;
-movement;
-learning;
-final state.
-AC13 - Telemetry
+- memory encoding;
+- memory decay;
+- recall;
+- neural activations;
+- action selections;
+- movement;
+- learning;
+- final state.
 
-The debug trace must expose at least:
+### AC13 - Telemetry
 
-current direct food perception;
-whether food is occluded;
-memory encoding event;
-stored remembered direction;
-memory age;
-memory confidence;
-recalled memory signal;
-direct-perception activation;
-memory activation;
-candidate action scores;
-selected action;
-movement direction source;
-memory refresh/correction;
-memory decay;
-memory expiration where applicable.
+Debug telemetry must expose at least:
 
-It must be possible to answer:
+- direct food perception;
+- food occlusion status;
+- memory encoding;
+- remembered direction;
+- memory age;
+- memory confidence;
+- recalled memory signal;
+- direct-perception neural activation;
+- memory neural activation;
+- candidate action scores;
+- selected action;
+- movement direction source;
+- memory refresh/correction;
+- memory decay;
+- memory expiration.
 
-"Did the Creature do this because it currently saw the food, because it remembered the food, or for some other reason?"
+The trace must make it possible to answer:
 
-20. Required Control Experiments
-Control A - Memory Disabled
+**Did the Creature behave this way because it currently perceived food, because it remembered food, or because of some other mechanism?**
+
+---
+
+## 20. Required Control Experiments
+
+### Control A - Memory Disabled
 
 Same:
 
-world;
-hunger;
-previous visible-food experience;
-timing;
-occlusion sequence;
+- world;
+- hunger;
+- prior visible-food experience;
+- timing;
+- occlusion sequence;
 
-but memory encoding or recall is disabled.
+but usable memory encoding/recall is disabled.
 
 Expected:
 
+```text
 memory-enabled behaviour
 ≠
 memory-disabled behaviour
+```
 
 during the occluded probe.
 
-Control B - No Prior Perception
+### Control B - No Prior Perception
 
 Food begins occluded.
 
-Creature has never perceived it.
+The Creature has never perceived it.
 
 Expected:
 
+```text
 no food memory
-no food recall
+no recall
 no memory-guided search
+```
 
 This prevents hidden world knowledge from masquerading as memory.
 
-Control C - Expired Memory
+### Control C - Expired Memory
 
-Creature previously perceived food but enough simulation time passes for the memory trace to expire.
+The Creature previously perceived food but sufficient simulation time passes for the memory to expire.
 
 Expected:
 
+```text
 expired-memory behaviour
 approaches memory-disabled behaviour
-Control D - Stale Memory
+```
 
-Creature sees food in Direction A.
+### Control D - Stale Memory
+
+Creature perceives food in Direction A.
 
 Food becomes occluded.
 
@@ -708,159 +831,168 @@ Food moves to Direction B while hidden.
 
 Expected before re-perception:
 
-memory continues representing Direction A
+```text
+memory still represents Direction A
+```
 
 not Direction B.
 
-Control E - Memory Correction
+### Control E - Memory Correction
 
-Following the stale-memory experiment, food becomes directly perceptible in Direction B.
+Following Control D, food becomes directly perceptible in Direction B.
 
 Expected:
 
-new perception
-→ memory corrected or refreshed
-→ later recall reflects Direction B
-21. Forbidden Shortcuts
+```text
+new direct perception
+→ memory corrected/refreshed
+→ later recall represents Direction B
+```
 
-M2 is rejected if success depends on any of the following.
+---
 
-A direct behaviour rule such as:
+## 21. Forbidden Shortcuts
 
+M2 is rejected if success depends on:
+
+```text
 if rememberedFood then seek
+```
 
-implemented outside normal neural/action competition.
+implemented outside neural/action competition;
 
-A hidden target-following rule such as:
+or:
 
+```text
 if foodNotVisible then moveToLastFoodPosition
+```
 
-using stored exact world coordinates.
+using hidden exact coordinates;
 
-A permanent behavioural flag such as:
+or a permanent behavioural flag such as:
 
+```text
 hasSeenFood = true
+```
 
-directly activating food-seeking behaviour without a graded memory representation.
+that directly activates food-seeking behaviour.
 
-Storing raw cognitive target fields such as:
+The following are also forbidden:
 
-targetX
-targetY
-foodWorldPosition
-lastKnownExactFoodPosition
+- storing exact hidden target coordinates in cognitive memory;
+- using remembered object identity to query its hidden current location;
+- refreshing memory while food is occluded without a legitimate sensory event;
+- perfect non-decaying memory;
+- tests injecting remembered direction directly into the brain instead of exercising encoding and recall;
+- UI or renderer code controlling memory;
+- a hidden state machine implementing see → remember → seek → eat;
+- an LLM deciding Creature actions;
+- non-seeded randomness inside deterministic simulation scope;
+- tests asserting only final position without proving the causal memory mechanism.
 
-inside memory.
+---
 
-Using remembered object identity to query the hidden food's current position.
+## 22. Architectural Constraint - Do Not Duplicate the Simulation Loop
 
-Refreshing memory while an object is occluded without a legitimate sensory event.
+M1 currently contains both:
 
-Allowing memory to remain perfect indefinitely.
-
-Tests injecting the expected remembered direction directly into the brain instead of exercising memory encoding and recall.
-
-UI or rendering code controlling memory.
-
-A hidden state machine implementing:
-
-see
-→ remember
-→ seek
-→ eat
-
-without neural competition.
-
-An LLM deciding Creature actions.
-
-Non-seeded randomness inside deterministic simulation scope.
-
-Tests that assert only final position without proving the causal memory pathway.
-
-22. Architectural Constraint - Do Not Duplicate the Simulation Loop
-
-M1 currently contains:
-
+```text
 m1Trial.ts
 m1Episode.ts
+```
 
 with partially overlapping execution logic.
 
-M2 must not introduce a third independent full simulation pipeline.
-
-Before or during early M2 implementation, shared stepped simulation mechanisms should be reused or consolidated where reasonably possible.
+M2 must not create a third independent simulation pipeline.
 
 M2 should build toward:
 
+```text
 state
   ↓
 one simulation tick
   ↓
 new state
+```
 
-rather than increasingly large hard-coded episode functions.
+Shared stepped simulation mechanisms should be reused or consolidated where reasonably possible.
 
-This is important because future:
+This is important because later:
 
-memory;
-social behaviour;
-development;
-genetics;
-language;
+- memory;
+- social behaviour;
+- development;
+- genetics;
+- language;
 
-will all require persistent multi-tick state.
+all require persistent multi-tick simulation state.
 
-23. State Ownership
+---
+
+## 23. State Ownership
 
 M2 memory belongs to the Creature's simulation state.
 
-It must not live only inside:
+It must not exist only inside:
 
-a test;
-a closure;
-React state;
-renderer state;
-UI state;
-global mutable variables.
+- a test;
+- a closure;
+- React state;
+- renderer state;
+- UI state;
+- a mutable global variable.
 
 Memory must be:
 
-serializable;
-inspectable;
-deterministic;
-resumable.
-24. Memory and Learning Are Different Mechanisms
+- serializable;
+- inspectable;
+- deterministic;
+- resumable;
+- individually owned by the Creature.
 
-M2 must preserve the conceptual distinction:
+---
 
+## 24. Memory and Learning Are Different Mechanisms
+
+M2 must preserve the distinction:
+
+```text
 MEMORY
 =
 stored and recalled information
+```
 
+versus:
+
+```text
 LEARNING
 =
 persistent neural-weight modification
+```
 
-The two mechanisms may interact.
+They may interact:
 
-For example:
-
+```text
 memory recall
 → action
 → biological consequence
 → reward
 → neural learning
+```
 
-But memory itself must not simply be represented as a permanent neural weight change.
+But memory itself must not merely be represented as permanent neural weight modification.
 
 Existing M1 reinforcement learning must continue functioning.
 
-25. Direct Perception Has Priority Over Recall
+---
 
-When both valid direct perception and memory are available, current legitimate sensory evidence must not be silently replaced by stale recalled information.
+## 25. Direct Perception Has Priority Over Stale Recall
+
+When direct perception and memory are both available, legitimate current sensory evidence must not be silently replaced by stale memory.
 
 Conceptually:
 
+```text
 direct perception
 =
 current evidence
@@ -868,29 +1000,31 @@ current evidence
 memory
 =
 historical evidence
+```
 
-The architecture may allow both signals to influence cognition, but a stale memory must not cause the Creature to ignore clearly contradictory direct sensory information.
+Both may influence cognition, but contradictory valid direct perception must be capable of correcting stale memory.
 
-This rule is particularly important for the memory-correction experiment.
+---
 
-26. Memory Must Be Creature-Specific
+## 26. Memory Must Be Creature-Specific
 
 Memory belongs to the individual Creature that experienced the sensory event.
 
-M2 must not introduce shared global food memory.
+M2 must not introduce global shared food memory.
 
-Future multiple-Creature systems must be able to give different Creatures different remembered histories.
+Although M2 uses only one Creature, its memory architecture must support the future possibility that different Creatures possess different experiential histories.
 
-Even though M2 uses only one Creature, memory state should therefore be designed as Creature-owned state rather than world-global cognition.
+---
 
-27. Telemetry Example
+## 27. Telemetry Example
 
-An acceptable conceptual trace might resemble:
+Illustrative only:
 
+```text
 TICK 1
 
 food:
-  physically present = yes
+  present = yes
   occluded = no
 
 direct perception:
@@ -917,12 +1051,15 @@ selected:
 
 movement source:
   direct perception
+```
 
+Later:
 
+```text
 TICK 2
 
 food:
-  physically present = yes
+  present = yes
   occluded = yes
 
 direct perception:
@@ -950,126 +1087,147 @@ selected:
 
 movement source:
   memory
+```
 
+Later still:
 
-LATER
+```text
+memory confidence below threshold
+→ memory expires
+→ remembered-food activation = 0
+→ SEEK loses memory-derived support
+```
 
-direct perception:
-  none
+Exact numbers above are examples only.
 
-memory:
-  confidence = below threshold
-  expired = yes
+Acceptance constants must be defined prospectively in implementation and must not be copied merely to guarantee a passing outcome.
 
-brain:
-  remembered-food activation = 0
+---
 
-actions:
-  seek = below idle
+## 28. Recommended Test Scenarios
 
-selected:
-  idle
+1. Food visible → memory encoded.
 
-Exact numbers are illustrative only.
+2. Food occluded → memory persists.
 
-Acceptance-test constants must be defined prospectively in implementation rather than copied from this example solely to guarantee a passing result.
+3. Memory-guided SEEK exceeds identical memory-disabled control.
 
-28. Recommended Test Scenarios
-Food visible → memory encoded.
-Food occluded one tick later → memory persists.
-Memory-guided SEEK exceeds identical memory-disabled control.
-Creature moves in recalled direction while food remains hidden.
-Food hidden without any previous perception → no recall.
-Memory confidence decreases across simulation ticks.
-Memory eventually expires → behaviour approaches control.
-Food moves while hidden → memory remains stale.
-Food becomes visible at a new location → memory corrects.
-Save while food is hidden but memory active → reload → same recalled behaviour.
-Fixed initial state and timing reproduce identical memory traces.
-Telemetry distinguishes direct perception from recalled information.
-Existing M1 learning behaviour remains passing after memory integration.
-29. Required Delivery Evidence
+4. Creature moves according to recalled direction while food remains hidden.
+
+5. Food starts hidden with no prior perception → no recall.
+
+6. Memory confidence decreases across simulation ticks.
+
+7. Memory expires → behaviour approaches control.
+
+8. Food moves while hidden → memory remains stale.
+
+9. Food becomes visible at a new location → memory corrects.
+
+10. Save while food is hidden but memory active → reload → identical continuation.
+
+11. Identical initial state/timing reproduces identical memory trace.
+
+12. Telemetry distinguishes direct perception from recall.
+
+13. Existing M1 tests continue passing after memory integration.
+
+---
+
+## 29. Required Delivery Evidence
 
 Before M2 can be accepted, the implementation review must provide:
 
-files changed;
-architecture summary;
-memory-state schema;
-explanation of how memory is derived from perception;
-explanation of why memory cannot query hidden world truth;
-decay configuration;
-behavioural probe definition;
-memory-enabled results;
-memory-disabled control results;
-no-prior-perception control results;
-forgetting results;
-stale-memory experiment;
-memory-correction experiment;
-save/reload continuity result;
-deterministic replay result;
-example telemetry trace;
-known limitations;
-confirmation that M1 learning still works;
-confirmation that no prohibited shortcut is used.
-30. Known Expected Limitations
+- files changed;
+- architecture summary;
+- memory-state schema;
+- explanation of how memory is derived from perception;
+- explanation of why memory cannot query hidden world truth;
+- decay configuration;
+- behavioural probe definition;
+- memory-enabled results;
+- memory-disabled control results;
+- no-prior-perception control results;
+- forgetting results;
+- stale-memory experiment;
+- memory-correction experiment;
+- save/reload continuity result;
+- deterministic replay result;
+- example telemetry trace;
+- known limitations;
+- confirmation that M1 learning still works;
+- confirmation that no prohibited shortcut is used.
+
+---
+
+## 30. Known Expected Limitations
 
 A successful M2 Creature will still have extremely primitive memory.
 
 Its memory may effectively amount to:
 
+```text
 "I recently sensed food roughly in that direction."
+```
 
 That is sufficient for M2.
 
 M2 does not require:
 
+```text
 "I remember that yesterday you placed an apple behind the red rock and I preferred it because I was hungry."
+```
 
-That level of representation requires later:
+That richer capability requires later systems for:
 
-object concepts;
-richer episodic memory;
-temporal representation;
-places;
-relationships;
-language;
-autobiographical state.
+- object concepts;
+- episodic representation;
+- temporal representation;
+- places;
+- relationships;
+- language;
+- autobiographical state.
 
-The purpose of M2 is to establish the smallest credible causal foundation from which those systems can later grow.
+M2 exists to establish the smallest credible causal foundation from which those capabilities can later grow.
 
-31. M2 Success Definition
+---
 
-M2 succeeds when the following claim is experimentally supported:
+## 31. M2 Success Definition
 
-After directly perceiving food, the Creature can later behave differently when that food is no longer directly perceptible because an internally stored, decaying, sensory-derived memory influences its neural action-selection system.
+M2 succeeds when this claim is experimentally supported:
 
-The implementation must also rule out the following alternative explanations within the prototype's scope:
+> After directly perceiving food, the Creature can later behave differently when that food is no longer directly perceptible because an internally stored, decaying, sensory-derived memory influences its neural action-selection system.
 
-hidden access to food coordinates;
-direct target following;
-permanent behavioural flags;
-scripted remember-and-seek rules;
-current perception masquerading as memory;
-perfect non-decaying memory;
-test-only signal injection;
-global memory not owned by the Creature.
-32. M2 Completion Gate
+The implementation must also rule out, within prototype scope:
+
+- hidden access to food coordinates;
+- direct target following;
+- permanent behavioural flags;
+- scripted remember-and-seek rules;
+- current perception masquerading as memory;
+- perfect non-decaying memory;
+- test-only memory injection;
+- global memory not owned by the Creature.
+
+---
+
+## 32. M2 Completion Gate
 
 Do not begin M3 merely because a Creature appears to remember something.
 
 M2 may be closed only after:
 
-all M2 acceptance criteria pass;
-memory-enabled behaviour is compared against controls;
-no-prior-perception control passes;
-stale-memory behaviour demonstrates lack of omniscience;
-memory correction by new perception is demonstrated;
-deterministic forgetting is demonstrated;
-save/reload memory continuity is demonstrated;
-deterministic replay is demonstrated;
-telemetry exposes the causal memory pathway;
-existing M1 tests continue passing;
-the implementation is reviewed for prohibited shortcuts;
-the user explicitly accepts M2.
+1. all M2 acceptance criteria pass;
+2. memory-enabled behaviour is compared against controls;
+3. the no-prior-perception control passes;
+4. stale-memory behaviour demonstrates lack of omniscience;
+5. memory correction through new perception is demonstrated;
+6. deterministic forgetting is demonstrated;
+7. save/reload memory continuity is demonstrated;
+8. deterministic replay is demonstrated;
+9. telemetry exposes the causal memory pathway;
+10. existing M1 tests continue passing;
+11. the implementation is reviewed for prohibited shortcuts;
+12. the user explicitly accepts M2.
 
 Until explicit acceptance, M2 remains active.
