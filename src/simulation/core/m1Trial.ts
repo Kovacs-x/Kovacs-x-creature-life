@@ -1,5 +1,9 @@
 import type { BrainState } from "./contracts.js";
 
+import type {
+  M1TelemetryEntry,
+} from "./m1Telemetry.js";
+
 import {
   advanceHungerOverTime,
   createHungerState,
@@ -12,18 +16,45 @@ import {
   M1_NODE_IDS,
 } from "../brain/m1Brain.js";
 
-import { deriveConnectionEligibilities } from "../brain/eligibility.js";
-import { keepEligibilitiesForTarget } from "../brain/actionEligibility.js";
-import { mergeEligibilityTrace } from "../brain/eligibilityTrace.js";
-import { applyRewardPlasticity } from "../brain/plasticity.js";
-import { deriveEnergyReward } from "../brain/reward.js";
+import {
+  deriveConnectionEligibilities,
+} from "../brain/eligibility.js";
 
-import { moveAlongDirection } from "../actions/movement.js";
-import { eatFood } from "../actions/eating.js";
+import {
+  keepEligibilitiesForTarget,
+} from "../brain/actionEligibility.js";
 
-import { perceiveFood } from "../senses/foodPerception.js";
-import { senseHunger } from "../senses/hungerSense.js";
-import { senseFoodContact } from "../senses/foodContact.js";
+import {
+  mergeEligibilityTrace,
+} from "../brain/eligibilityTrace.js";
+
+import {
+  applyRewardPlasticity,
+} from "../brain/plasticity.js";
+
+import {
+  deriveEnergyReward,
+} from "../brain/reward.js";
+
+import {
+  moveAlongDirection,
+} from "../actions/movement.js";
+
+import {
+  eatFood,
+} from "../actions/eating.js";
+
+import {
+  perceiveFood,
+} from "../senses/foodPerception.js";
+
+import {
+  senseHunger,
+} from "../senses/hungerSense.js";
+
+import {
+  senseFoodContact,
+} from "../senses/foodContact.js";
 
 import {
   createFoodObject,
@@ -54,7 +85,11 @@ export interface M1TrialTick {
 }
 
 export interface M1TrialResult {
-  readonly ticks: readonly M1TrialTick[];
+  readonly ticks:
+    readonly M1TrialTick[];
+
+  readonly telemetry:
+    readonly M1TelemetryEntry[];
 
   readonly positionBefore: {
     readonly x: number;
@@ -66,17 +101,26 @@ export interface M1TrialResult {
     readonly y: number;
   };
 
-  readonly hungerBefore: HungerState;
-  readonly hungerAfter: HungerState;
+  readonly hungerBefore:
+    HungerState;
 
-  readonly foodBefore: FoodObjectState;
-  readonly foodAfter: FoodObjectState;
+  readonly hungerAfter:
+    HungerState;
+
+  readonly foodBefore:
+    FoodObjectState;
+
+  readonly foodAfter:
+    FoodObjectState;
 
   readonly ate: boolean;
   readonly reward: number;
 
-  readonly brainBefore: BrainState;
-  readonly brainAfter: BrainState;
+  readonly brainBefore:
+    BrainState;
+
+  readonly brainAfter:
+    BrainState;
 
   readonly weightChanges: readonly {
     readonly connectionId: string;
@@ -94,7 +138,8 @@ export function runM1Trial(
     y: 0,
   };
 
-  let position = positionBefore;
+  let position =
+    positionBefore;
 
   const hungerBefore =
     createHungerState(
@@ -102,7 +147,8 @@ export function runM1Trial(
       1,
     );
 
-  let hunger = hungerBefore;
+  let hunger =
+    hungerBefore;
 
   const foodBefore =
     createFoodObject(
@@ -112,15 +158,21 @@ export function runM1Trial(
       0.5,
     );
 
-  let food = foodBefore;
+  let food =
+    foodBefore;
 
   const brainBefore =
     config.brain ??
     createM1Brain();
 
-  let brain = brainBefore;
+  let brain =
+    brainBefore;
 
-  const ticks: M1TrialTick[] = [];
+  const ticks:
+    M1TrialTick[] = [];
+
+  const telemetry:
+    M1TelemetryEntry[] = [];
 
   /*
    * TICK 1
@@ -160,13 +212,15 @@ export function runM1Trial(
       tick1ContactSignal,
     );
 
-  brain = tick1Brain.brain;
+  brain =
+    tick1Brain.brain;
 
   ticks.push({
     tick: 1,
 
     selectedActionId:
-      tick1Brain.selectedActionId,
+      tick1Brain
+        .selectedActionId,
 
     position,
 
@@ -174,15 +228,81 @@ export function runM1Trial(
       hunger.energy,
   });
 
-  const tick1Activations =
-    Object.fromEntries(
-      tick1Brain.brain.nodes.map(
-        (node) => [
-          node.id,
-          node.activation,
-        ],
-      ),
-    );
+  const tick1Activations:
+    Record<string, number> =
+      Object.fromEntries(
+        tick1Brain.brain.nodes.map(
+          (node) => [
+            node.id,
+            node.activation,
+          ],
+        ),
+      );
+
+  /*
+   * Diagnostic snapshot of the complete
+   * decision process.
+   *
+   * Telemetry observes the simulation.
+   * It does not influence behaviour.
+   */
+
+  telemetry.push({
+    type: "m1-decision",
+
+    tick: 1,
+
+    position: {
+      ...position,
+    },
+
+    energy:
+      hunger.energy,
+
+    hungerLevel:
+      tick1HungerSignal
+        .hungerLevel,
+
+    foodSignal:
+      tick1FoodSignal === null
+        ? null
+        : {
+            ...tick1FoodSignal,
+          },
+
+    contactInRange:
+      tick1ContactSignal
+        .inRange,
+
+    brainActivations: {
+      ...tick1Activations,
+    },
+
+    actionCandidates: [
+      {
+        actionId: "idle",
+        activation:
+          tick1Brain
+            .idleActivation,
+      },
+      {
+        actionId: "seek",
+        activation:
+          tick1Brain
+            .seekActivation,
+      },
+      {
+        actionId: "eat",
+        activation:
+          tick1Brain
+            .eatActivation,
+      },
+    ],
+
+    selectedActionId:
+      tick1Brain
+        .selectedActionId,
+  });
 
   const tick1RawEligibilities =
     deriveConnectionEligibilities(
@@ -195,21 +315,29 @@ export function runM1Trial(
       tick1Brain.brain,
       tick1RawEligibilities,
       actionIdToNodeId(
-        tick1Brain.selectedActionId,
+        tick1Brain
+          .selectedActionId,
       ),
     );
 
   if (
-    tick1Brain.selectedActionId ===
+    tick1Brain
+      .selectedActionId ===
       "seek" &&
     tick1FoodSignal !== null
   ) {
     const movement =
       moveAlongDirection(
         position,
-        tick1FoodSignal.directionX,
-        tick1FoodSignal.directionY,
+
+        tick1FoodSignal
+          .directionX,
+
+        tick1FoodSignal
+          .directionY,
+
         1,
+
         {
           minX: 0,
           minY: 0,
@@ -224,19 +352,14 @@ export function runM1Trial(
 
   /*
    * SIMULATION TIME ADVANCES
-   *
-   * One simulation tick elapses between
-   * the first and second decision.
-   *
-   * Biology changes because time passed,
-   * not because a UI or behavioural rule
-   * directly changed hunger.
    */
 
   hunger =
     advanceHungerOverTime(
       hunger,
+
       M1_TRIAL_TICK_SECONDS,
+
       {
         energyLossPerSecond:
           M1_TRIAL_ENERGY_LOSS_PER_SECOND,
@@ -246,10 +369,9 @@ export function runM1Trial(
   /*
    * TICK 2
    *
-   * The creature is now slightly hungrier.
-   *
-   * Perception is recomputed after movement
-   * and after biological time advancement.
+   * Perception and internal biology are
+   * sampled again after movement and
+   * metabolic time advancement.
    */
 
   const tick2FoodSignal =
@@ -288,7 +410,8 @@ export function runM1Trial(
     tick: 2,
 
     selectedActionId:
-      tick2Brain.selectedActionId,
+      tick2Brain
+        .selectedActionId,
 
     position,
 
@@ -296,15 +419,73 @@ export function runM1Trial(
       hunger.energy,
   });
 
-  const tick2Activations =
-    Object.fromEntries(
-      tick2Brain.brain.nodes.map(
-        (node) => [
-          node.id,
-          node.activation,
-        ],
-      ),
-    );
+  const tick2Activations:
+    Record<string, number> =
+      Object.fromEntries(
+        tick2Brain.brain.nodes.map(
+          (node) => [
+            node.id,
+            node.activation,
+          ],
+        ),
+      );
+
+  telemetry.push({
+    type: "m1-decision",
+
+    tick: 2,
+
+    position: {
+      ...position,
+    },
+
+    energy:
+      hunger.energy,
+
+    hungerLevel:
+      tick2HungerSignal
+        .hungerLevel,
+
+    foodSignal:
+      tick2FoodSignal === null
+        ? null
+        : {
+            ...tick2FoodSignal,
+          },
+
+    contactInRange:
+      tick2ContactSignal
+        .inRange,
+
+    brainActivations: {
+      ...tick2Activations,
+    },
+
+    actionCandidates: [
+      {
+        actionId: "idle",
+        activation:
+          tick2Brain
+            .idleActivation,
+      },
+      {
+        actionId: "seek",
+        activation:
+          tick2Brain
+            .seekActivation,
+      },
+      {
+        actionId: "eat",
+        activation:
+          tick2Brain
+            .eatActivation,
+      },
+    ],
+
+    selectedActionId:
+      tick2Brain
+        .selectedActionId,
+  });
 
   const tick2RawEligibilities =
     deriveConnectionEligibilities(
@@ -317,7 +498,8 @@ export function runM1Trial(
       tick2Brain.brain,
       tick2RawEligibilities,
       actionIdToNodeId(
-        tick2Brain.selectedActionId,
+        tick2Brain
+          .selectedActionId,
       ),
     );
 
@@ -331,12 +513,8 @@ export function runM1Trial(
     );
 
   /*
-   * Capture biological state immediately
-   * before the possible consequence.
-   *
-   * Reward should measure the effect of
-   * eating itself rather than including
-   * unrelated metabolic energy loss.
+   * Biological state immediately before
+   * the possible eating consequence.
    */
 
   const hungerBeforeEating =
@@ -345,7 +523,8 @@ export function runM1Trial(
   let ate = false;
 
   if (
-    tick2Brain.selectedActionId ===
+    tick2Brain
+      .selectedActionId ===
     "eat"
   ) {
     const eatingResult =
@@ -367,14 +546,8 @@ export function runM1Trial(
   }
 
   /*
-   * Reward is derived from the immediate
-   * biological consequence.
-   *
-   * If eating improved energy, reward is
-   * positive.
-   *
-   * If nothing improved biologically,
-   * reward is zero.
+   * Reward derives from actual biological
+   * change caused by the consequence.
    */
 
   const rewardSignal =
@@ -398,18 +571,61 @@ export function runM1Trial(
       },
     );
 
+  /*
+   * Final learning/consequence telemetry.
+   *
+   * This exposes exactly what happened
+   * after the selected behaviour without
+   * allowing telemetry to alter it.
+   */
+
+  telemetry.push({
+    type: "m1-learning",
+
+    tick: 2,
+
+    learningEnabled:
+      config.learningEnabled,
+
+    ate,
+
+    foodConsumed:
+      food.consumed,
+
+    energyBeforeConsequence:
+      hungerBeforeEating.energy,
+
+    energyAfterConsequence:
+      hunger.energy,
+
+    reward:
+      rewardSignal.value,
+
+    weightChanges:
+      plasticity.changes.map(
+        (change) => ({
+          ...change,
+        }),
+      ),
+  });
+
   return {
     ticks,
 
+    telemetry,
+
     positionBefore,
+
     positionAfter:
       position,
 
     hungerBefore,
+
     hungerAfter:
       hunger,
 
     foodBefore,
+
     foodAfter:
       food,
 
@@ -433,13 +649,16 @@ function actionIdToNodeId(
 ): string {
   switch (actionId) {
     case "idle":
-      return M1_NODE_IDS.idleOutput;
+      return M1_NODE_IDS
+        .idleOutput;
 
     case "seek":
-      return M1_NODE_IDS.seekOutput;
+      return M1_NODE_IDS
+        .seekOutput;
 
     case "eat":
-      return M1_NODE_IDS.eatOutput;
+      return M1_NODE_IDS
+        .eatOutput;
 
     default:
       throw new Error(
