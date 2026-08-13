@@ -1,6 +1,7 @@
 import type { BrainState } from "./contracts.js";
 
 import {
+  advanceHungerOverTime,
   createHungerState,
   type HungerState,
 } from "../biology/hunger.js";
@@ -29,6 +30,11 @@ import {
   type FoodObjectState,
 } from "../../world/food.js";
 
+export const M1_TRIAL_TICK_SECONDS = 1;
+
+export const M1_TRIAL_ENERGY_LOSS_PER_SECOND =
+  0.02;
+
 export interface M1TrialConfig {
   readonly learningEnabled: boolean;
   readonly brain?: BrainState;
@@ -36,11 +42,15 @@ export interface M1TrialConfig {
 
 export interface M1TrialTick {
   readonly tick: number;
+
   readonly selectedActionId: string;
+
   readonly position: {
     readonly x: number;
     readonly y: number;
   };
+
+  readonly energy: number;
 }
 
 export interface M1TrialResult {
@@ -86,24 +96,27 @@ export function runM1Trial(
 
   let position = positionBefore;
 
-  const hungerBefore = createHungerState(
-    0.1,
-    1,
-  );
+  const hungerBefore =
+    createHungerState(
+      0.1,
+      1,
+    );
 
   let hunger = hungerBefore;
 
-  const foodBefore = createFoodObject(
-    "food-1",
-    1,
-    0,
-    0.5,
-  );
+  const foodBefore =
+    createFoodObject(
+      "food-1",
+      1,
+      0,
+      0.5,
+    );
 
   let food = foodBefore;
 
   const brainBefore =
-    config.brain ?? createM1Brain();
+    config.brain ??
+    createM1Brain();
 
   let brain = brainBefore;
 
@@ -112,20 +125,25 @@ export function runM1Trial(
   /*
    * TICK 1
    *
+   * The creature begins hungry.
+   *
    * Food is visible but not yet within
    * eating range.
    */
 
-  const tick1FoodSignal = perceiveFood(
-    position,
-    food,
-    {
-      maxRange: 10,
-    },
-  );
+  const tick1FoodSignal =
+    perceiveFood(
+      position,
+      food,
+      {
+        maxRange: 10,
+      },
+    );
 
   const tick1HungerSignal =
-    senseHunger(hunger);
+    senseHunger(
+      hunger,
+    );
 
   const tick1ContactSignal =
     senseFoodContact(
@@ -146,9 +164,14 @@ export function runM1Trial(
 
   ticks.push({
     tick: 1,
+
     selectedActionId:
       tick1Brain.selectedActionId,
+
     position,
+
+    energy:
+      hunger.energy,
   });
 
   const tick1Activations =
@@ -195,25 +218,53 @@ export function runM1Trial(
         },
       );
 
-    position = movement.position;
+    position =
+      movement.position;
   }
+
+  /*
+   * SIMULATION TIME ADVANCES
+   *
+   * One simulation tick elapses between
+   * the first and second decision.
+   *
+   * Biology changes because time passed,
+   * not because a UI or behavioural rule
+   * directly changed hunger.
+   */
+
+  hunger =
+    advanceHungerOverTime(
+      hunger,
+      M1_TRIAL_TICK_SECONDS,
+      {
+        energyLossPerSecond:
+          M1_TRIAL_ENERGY_LOSS_PER_SECOND,
+      },
+    );
 
   /*
    * TICK 2
    *
-   * Perception is recomputed after movement.
+   * The creature is now slightly hungrier.
+   *
+   * Perception is recomputed after movement
+   * and after biological time advancement.
    */
 
-  const tick2FoodSignal = perceiveFood(
-    position,
-    food,
-    {
-      maxRange: 10,
-    },
-  );
+  const tick2FoodSignal =
+    perceiveFood(
+      position,
+      food,
+      {
+        maxRange: 10,
+      },
+    );
 
   const tick2HungerSignal =
-    senseHunger(hunger);
+    senseHunger(
+      hunger,
+    );
 
   const tick2ContactSignal =
     senseFoodContact(
@@ -230,13 +281,19 @@ export function runM1Trial(
       tick2ContactSignal,
     );
 
-  brain = tick2Brain.brain;
+  brain =
+    tick2Brain.brain;
 
   ticks.push({
     tick: 2,
+
     selectedActionId:
       tick2Brain.selectedActionId,
+
     position,
+
+    energy:
+      hunger.energy,
   });
 
   const tick2Activations =
@@ -273,27 +330,56 @@ export function runM1Trial(
       },
     );
 
+  /*
+   * Capture biological state immediately
+   * before the possible consequence.
+   *
+   * Reward should measure the effect of
+   * eating itself rather than including
+   * unrelated metabolic energy loss.
+   */
+
+  const hungerBeforeEating =
+    hunger;
+
   let ate = false;
 
   if (
     tick2Brain.selectedActionId ===
     "eat"
   ) {
-    const eatingResult = eatFood(
-      position,
-      hunger,
-      food,
-      0.25,
-    );
+    const eatingResult =
+      eatFood(
+        position,
+        hunger,
+        food,
+        0.25,
+      );
 
-    hunger = eatingResult.hunger;
-    food = eatingResult.food;
-    ate = eatingResult.ate;
+    hunger =
+      eatingResult.hunger;
+
+    food =
+      eatingResult.food;
+
+    ate =
+      eatingResult.ate;
   }
+
+  /*
+   * Reward is derived from the immediate
+   * biological consequence.
+   *
+   * If eating improved energy, reward is
+   * positive.
+   *
+   * If nothing improved biologically,
+   * reward is zero.
+   */
 
   const rewardSignal =
     deriveEnergyReward(
-      hungerBefore,
+      hungerBeforeEating,
       hunger,
     );
 
@@ -306,6 +392,7 @@ export function runM1Trial(
         learningRate: 0.25,
         minWeight: -1,
         maxWeight: 1,
+
         learningEnabled:
           config.learningEnabled,
       },
@@ -315,18 +402,24 @@ export function runM1Trial(
     ticks,
 
     positionBefore,
-    positionAfter: position,
+    positionAfter:
+      position,
 
     hungerBefore,
-    hungerAfter: hunger,
+    hungerAfter:
+      hunger,
 
     foodBefore,
-    foodAfter: food,
+    foodAfter:
+      food,
 
     ate,
-    reward: rewardSignal.value,
+
+    reward:
+      rewardSignal.value,
 
     brainBefore,
+
     brainAfter:
       plasticity.brain,
 
