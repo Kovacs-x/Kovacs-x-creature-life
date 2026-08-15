@@ -1,9 +1,9 @@
 # Creature Life — Project State
 
 **Repository:** Kovacs-x/Kovacs-x-creature-life  
-**Current milestone:** M2 — First Persistent Memory-Guided Creature  
-**Last accepted milestone:** M1 — First Adaptive Creature  
-**Current phase:** Workflow hardening before M2 implementation
+**Current milestone:** V0 — Creature Embodiment Vertical Slice  
+**Last accepted milestone:** M2 — First Persistent Memory-Guided Creature  
+**Current phase:** V0 specification and embodiment planning
 
 ---
 
@@ -160,7 +160,84 @@ M1 demonstrated:
 - save/reload learning continuity;
 - rejection of stale hidden food targets.
 
-M1 is now the accepted adaptive-organism baseline.
+M1 is the accepted adaptive-organism baseline.
+
+### M2 — First Persistent Memory-Guided Creature
+
+Status: formally accepted on 2026-08-15.
+
+M2 established the causal pathway:
+
+past legitimate perception  
+→ sensory-derived memory encoding  
+→ persistent internal trace  
+→ deterministic simulation-time decay  
+→ direct perception disappears  
+→ recall  
+→ distinct remembered-food neural input  
+→ weighted neural activation  
+→ normal action competition  
+→ selected SEEK  
+→ recalled direction may guide movement
+
+M2 demonstrated:
+
+- memory originating from legitimate food perception;
+- persistent sensory-derived memory traces;
+- explicit memory age and confidence;
+- deterministic memory decay;
+- recall after current food perception disappears;
+- strict separation of direct perception and recall;
+- strict separation of memory and neural learning;
+- remembered-food evidence entering a distinct neural input;
+- memory influencing SEEK through weighted neural competition;
+- no direct memory-to-SEEK command;
+- no direct memory-to-MOVE command;
+- remembered-direction movement only after SEEK wins;
+- a predefined memory-enabled versus memory-disabled behavioural control;
+- a no-prior-perception control;
+- stale memory remaining wrong after hidden food relocation;
+- no hidden object-ID-to-current-position recall path;
+- correction of stale memory by new legitimate perception;
+- deterministic forgetting and loss of behavioural influence;
+- expired-memory behaviour matching an equivalent memory-disabled control;
+- active memory surviving serialization;
+- save/reload continuation matching uninterrupted execution;
+- deterministic replay of M2 state and telemetry;
+- telemetry distinguishing direct perception, memory recall and absence of food evidence;
+- telemetry exposing memory encoding, refresh, correction, decay and expiration;
+- reuse of the existing stepped episode transition rather than introduction of a third simulation pipeline.
+
+The implementation evidence through M2.9 was committed at:
+
+`9e58b4ac36d1f103b0562cab1d85828743e0309e`
+
+and passed GitHub CI before formal acceptance.
+
+M2.10 included:
+
+- full M1 and M2 validation;
+- source inspection for prohibited shortcuts;
+- independent adversarial AI review;
+- evaluation of the review against the prospectively locked M2 specification and committed tests;
+- primary formal audit;
+- explicit user acceptance.
+
+The independent reviewer found the architecture sound but raised three evidence objections.
+
+The primary audit determined that none constituted an acceptance failure:
+
+1. the proposed memory-removed primary control was not the prospectively locked Control A; the specification deliberately defined memory-disabled encoding/recall as the primary control and separately defined expired memory as Control C;
+2. direction-reversal evidence was already provided by the separately required stale-memory adversarial control;
+3. exact forgetting timing was already explicitly tested at the primitive level, with confidence 0.25 recallable at six simulated seconds and expiration occurring at seven simulated seconds.
+
+M2 is therefore accepted within its deliberately narrow claim:
+
+**The Creature possesses primitive persistent sensory-derived memory that can influence later neural competition and behaviour after the originating information leaves current perception.**
+
+This does not establish sophisticated episodic memory, planning, semantic memory or general-purpose navigation.
+
+M2 is now the accepted persistent-memory organism baseline.
 
 ---
 
@@ -226,7 +303,7 @@ This demonstrates that meaningful transient neural credit can cross a persistenc
 
 ---
 
-## 7. Current Milestone — M2
+## 7. Accepted Milestone — M2
 
 M2 is:
 
@@ -236,11 +313,11 @@ Authoritative specification:
 
 docs/M2_SPEC.md
 
-M2 asks:
+M2 asked:
 
 Can information derived from a legitimate past sensory experience continue to influence the Creature after that information disappears from current perception, without giving the Creature hidden access to world truth?
 
-Required causal direction:
+Accepted causal direction:
 
 past legitimate perception  
 → memory encoding  
@@ -252,9 +329,64 @@ past legitimate perception
 → normal action competition  
 → memory-influenced behaviour
 
-M2 is active.
+M2 is formally accepted.
 
-No M2 cognitive implementation has yet been accepted.
+The accepted implementation preserves the distinction between:
+
+current world truth;
+
+current sensory evidence;
+
+persistent memory;
+
+neural activation;
+
+action competition;
+
+physical movement.
+
+The strongest adversarial evidence is the stale-memory experiment.
+
+The Creature first legitimately perceives food east.
+
+While food is occluded, the same food object is secretly moved west.
+
+Before new perception occurs:
+
+- direct food perception is absent;
+- memory continues to represent east;
+- the diagnostic object identity remains unchanged;
+- remembered-food neural activation remains available;
+- SEEK must still win ordinary action competition;
+- movement continues east;
+- the Creature moves farther from the hidden current food position.
+
+This deliberately incorrect behaviour relative to hidden world truth is positive evidence that the Creature is acting from a stale internal representation rather than omniscient access to the current target.
+
+When the relocated food later becomes legitimately visible west:
+
+- current perception points west;
+- stale recalled evidence is not double-counted;
+- memory is refreshed from the new sensory signal;
+- remembered direction changes west;
+- later occluded recall also represents west.
+
+Memory therefore can be wrong, can remain wrong, and can later be corrected by legitimate evidence.
+
+Forgetting is also behaviourally meaningful.
+
+At the locked minimum confidence, recall remains usable.
+
+After deterministic decay crosses the threshold:
+
+- the persistent trace expires;
+- remembered-food neural activation disappears;
+- memory-guided movement stops;
+- behaviour matches an otherwise identical memory-disabled control.
+
+The M2 acceptance claim is intentionally narrow.
+
+No stronger cognitive claim should be inferred without later mechanism and evidence.
 
 ---
 
@@ -305,13 +437,15 @@ M2 must demonstrate genuine forgetting.
 
 Permanent perfect storage is insufficient.
 
-More advanced reversal learning, generalisation and contextual association are important future questions but remain outside M2.
+More advanced reversal learning, generalisation and contextual association remain outside accepted M2 scope.
+
+These principles remain constraints on future code that interacts with the accepted memory system.
 
 ---
 
 ## 9. Locked Prospective M2 Memory Constants
 
-The first M2 food-memory implementation begins with:
+The accepted M2 food-memory implementation uses:
 
 **Initial confidence:** 1.0
 
@@ -321,21 +455,25 @@ The first M2 food-memory implementation begins with:
 
 These values were selected before memory was connected to behaviour.
 
-They must not be changed merely because a later behavioural result is inconvenient.
+They were not subsequently tuned merely because a behavioural result was inconvenient.
 
 They are not sacred constants.
 
-A change is permitted if implementation reveals a genuine mathematical, architectural or specification problem.
+A future change is permitted if later implementation reveals a genuine mathematical, architectural or design reason.
 
-Any such change must have an explicit documented reason rather than being an undocumented adjustment made to force an acceptance test to pass.
+Any such change must have an explicit documented reason rather than being an undocumented adjustment made to force a behavioural result to pass.
 
 ---
 
-## 10. M2 Implementation Order
+## 10. M2 Implementation Record
+
+All stages M2.1 through M2.10 were completed before formal acceptance.
+
+The order below is retained as methodological history because the sequencing itself was part of the evidence.
 
 ### M2.1 — Pure memory primitives
 
-Implement:
+Implemented:
 
 FoodPerceptionSignal  
 → memory encoding  
@@ -343,7 +481,7 @@ FoodPerceptionSignal
 → age and deterministic decay  
 → recall or expiration
 
-Includes:
+Included:
 
 - encoding;
 - persistence;
@@ -353,56 +491,48 @@ Includes:
 - recall;
 - forgetting.
 
-No brain integration yet.
-
-No behavioural change yet.
-
-Unit tests must establish the primitive mechanism independently.
+The primitive mechanism was established independently before behavioural integration.
 
 ### M2.2 — Legitimate sensory occlusion
 
-Establish:
+Established:
 
 food physically exists  
 but  
 direct food perception = null
 
-Occlusion must occur through the real sensory and simulation pathway.
+Occlusion occurs through the real sensory and episode pathway.
 
-Tests must not inject fake memory or fake remembered direction directly into cognition.
+Tests do not inject fake remembered direction directly into cognition.
 
-### M2.2A — Lock behavioural integration tests before brain integration
+### M2.2A — Behavioural integration contract locked before brain integration
 
-Before remembered information is connected to the neural architecture, commit the behavioural and control integration tests that define the expected observable M2 difference.
+Before remembered information was connected to the neural architecture, behavioural and control integration tests were committed.
 
-These tests should express behavioural and causal outcomes rather than arbitrary exact internal activation numbers.
+They established the required conditions:
 
-They should establish conditions equivalent to:
+- direct food perception absent;
+- valid memory-enabled Creature possessing legitimate recall;
+- otherwise equivalent memory-disabled control without usable recall;
+- recalled information increasing SEEK activation relative to control;
+- memory-enabled behaviour producing more remembered-direction movement than control;
+- behaviour remaining dependent on normal action competition.
 
-- direct food perception is absent;
-- a valid memory-enabled Creature possesses legitimate recall;
-- an otherwise equivalent memory-disabled control does not;
-- recalled information increases SEEK activation relative to control;
-- memory-enabled behaviour produces more remembered-direction movement than control;
-- behaviour still depends on normal action competition.
-
-The tests should define what successful memory-guided behaviour means before implementation is adjusted to produce it.
-
-They should not prematurely dictate unnecessary internal implementation details.
+This prospectively defined what successful memory-guided behaviour meant before the brain mechanism was modified to produce it.
 
 ### M2.3 — Neural memory integration
 
-Add remembered-food information to the neural architecture.
+Remembered-food information was added as a distinct neural input.
 
 Direct perception and recall remain separate inputs.
 
-Memory influences weighted activation.
+Memory contributes through weighted activation.
 
 Memory does not directly command SEEK.
 
 ### M2.4 — Memory-guided movement
 
-If SEEK wins:
+When SEEK wins:
 
 direct perceived direction available  
 → use direct perceived direction
@@ -412,13 +542,13 @@ otherwise:
 valid recalled direction available  
 → use recalled direction
 
-Hidden current food coordinates must never be used.
+Hidden current food coordinates are not supplied to the movement executor.
 
-Movement from recall occurs only after the corresponding action wins normal competition.
+Movement from recall occurs only after SEEK wins normal action competition.
 
 ### M2.5 — Controlled behavioural experiment
 
-Run the already-defined comparison between:
+The prospectively defined comparison was run between:
 
 memory-enabled Creature
 
@@ -426,12 +556,16 @@ and:
 
 otherwise equivalent memory-disabled Creature
 
-after direct perception disappears.
+after direct perception disappeared.
 
-Primary evidence includes:
+The memory-enabled branch demonstrated:
 
-- greater SEEK activation attributable to memory;
-- remembered-direction movement attributable to memory.
+- legitimate recall;
+- greater SEEK activation attributable to remembered evidence;
+- SEEK winning normal competition;
+- greater remembered-direction movement.
+
+The control did not produce equivalent remembered-direction behaviour.
 
 ### M2.6 — Stale-memory adversarial test
 
@@ -440,71 +574,87 @@ Scenario:
 Creature sees food east  
 → memory represents east  
 → food becomes hidden  
-→ hidden food moves west
+→ same hidden food object moves west
 
 Before re-perception:
 
-memory must continue representing east, or a deterministically decayed form of east.
+memory continues representing east and decays deterministically.
 
-It must not secretly update to west.
+It does not secretly update to west.
 
-Passing this provides evidence that memory is an internal retained representation rather than hidden current-world lookup.
+The Creature continues moving east when SEEK wins despite the hidden food now being west.
 
-M2 should still be described conservatively as primitive persistent sensory-derived memory.
-
-Passing this test alone does not justify claiming a sophisticated episodic-memory architecture.
+This provides strong evidence that memory is an internal retained representation rather than a hidden current-world lookup.
 
 ### M2.7 — Correction
 
-Food becomes legitimately visible west.
+The hidden relocated food becomes legitimately visible west.
 
-New perception must correct or refresh stale memory.
+New perception refreshes the memory.
 
-Valid current sensory evidence must be capable of overriding contradictory stale memory.
+Current direct sensory evidence has priority over stale recall.
+
+The corrected persistent memory later recalls west when direct perception is removed again.
 
 ### M2.8 — Forgetting
 
-Memory confidence declines through simulation time.
+Memory confidence declines through explicit simulation time.
 
-Eventually recall stops.
+Exactly the minimum confidence remains usable.
 
-Expired-memory behaviour should approach the equivalent memory-disabled control.
+After confidence crosses below the threshold, the trace expires.
+
+After expiration:
+
+- recall is absent;
+- remembered-food neural activation is absent;
+- remembered-direction movement stops;
+- behaviour matches an equivalent memory-disabled control.
 
 ### M2.9 — Persistence, determinism and telemetry
 
-Prove:
+Established:
 
 - active memory survives save/load;
 - resumed execution matches uninterrupted execution;
-- deterministic replay;
+- memory age, confidence and direction survive serialization;
+- deterministic M2 replay;
+- deterministic telemetry replay;
 - telemetry distinguishes direct perception from recall;
 - telemetry exposes memory age and confidence;
-- telemetry identifies which information source influenced behaviour.
+- telemetry exposes encoding, refresh, correction, decay and expiration;
+- telemetry identifies the information source available to cognition;
+- telemetry records normal action competition;
+- telemetry identifies the movement direction source.
+
+M2 telemetry is observational.
+
+It operates on consecutive before/after episode states and does not constitute another simulation loop.
 
 ### M2.10 — Independent adversarial review and formal audit
 
-When M2 appears complete:
+Completed:
 
-1. run all existing M1 and M2 tests;
-2. run memory-enabled and memory-disabled controls;
-3. run no-prior-perception and expired-memory controls;
-4. run stale-memory and correction adversarial cases;
-5. inspect for prohibited shortcuts;
-6. give a separate frontier AI the specification, project state, relevant code, tests and evidence;
-7. ask that AI to attempt to falsify the memory claim;
-8. evaluate its criticism against actual code and experiments;
-9. conduct the primary formal M2 audit;
-10. require explicit user acceptance before closing M2.
+1. all existing M1 and M2 tests passed;
+2. memory-enabled and memory-disabled controls passed;
+3. no-prior-perception and expired-memory controls passed;
+4. stale-memory and correction adversarial cases passed;
+5. implementation was inspected for prohibited shortcuts;
+6. a separate frontier AI received the specification, project state, code, tests and evidence;
+7. that reviewer attempted to falsify the memory claim;
+8. its objections were evaluated against the committed implementation and prospectively locked specification;
+9. the primary formal M2 audit found no unresolved acceptance blocker;
+10. the user explicitly accepted M2 on 2026-08-15.
 
-Do not begin the next milestone merely because the Creature appears to remember something.
+M2 is closed.
 
 ---
 
-## 11. What M2 Will Not Expand Into
+## 11. M2 Scope Boundary
 
-M2 remains deliberately narrow.
+M2 was deliberately narrow.
 
-M2 does not need to prove:
+M2 does not prove:
 
 - sophisticated episodic memory;
 - contextual associative reversal learning;
@@ -522,7 +672,7 @@ M2 does not need to prove:
 
 These may become important later.
 
-They must not be added to M2 solely because they are interesting.
+They must not be retroactively attributed to M2 merely because the accepted primitive memory mechanism exists.
 
 ---
 
@@ -532,15 +682,19 @@ m1Trial.ts and m1Episode.ts currently contain overlapping M1 execution logic.
 
 This duplication was tolerated during final M1 validation to avoid destabilising accepted behaviour.
 
-M2 must not introduce a third independent simulation pipeline.
+M2 did not introduce a third independent simulation pipeline.
 
-Long-term architecture should move toward:
+M2 behaviour uses the reusable stepped episode transition:
 
 state  
 → one simulation tick  
 → new state
 
-Do not perform a large refactor during early M2 merely for cleanliness unless current duplication genuinely blocks correct implementation.
+Long-term architecture should continue moving toward this reusable transition model.
+
+Do not perform a large refactor merely for cleanliness unless embodiment or a later mechanism genuinely requires it.
+
+Accepted M1 and M2 behaviour must remain preserved through any later consolidation.
 
 ---
 
@@ -611,11 +765,11 @@ mechanism
 
 ---
 
-## 14. Post-M2 Decision — V0 Embodiment
+## 14. Current Phase — V0 Embodiment
 
-After M2 is formally accepted, Creature Life will not automatically continue through many additional headless cognitive milestones.
+With M2 formally accepted, Creature Life will not automatically continue through many additional headless cognitive milestones.
 
-The next formal phase should be:
+The current formal phase is:
 
 **V0 — Creature Embodiment Vertical Slice**
 
@@ -643,6 +797,8 @@ Never:
 
 animation or UI  
 → hidden cognitive decision
+
+V0 must begin with a specification and acceptance criteria before implementation is judged successful.
 
 ---
 
@@ -989,9 +1145,9 @@ External events may eventually include:
 - environmental event occurred;
 - player interaction occurred.
 
-This is not an early M2 task.
+This is not a V0 prerequisite unless embodiment work demonstrates a concrete need for it.
 
-It becomes more important during or after embodiment.
+It becomes more important as persistent interactive experiences grow longer and harder to reproduce.
 
 ---
 
@@ -1050,7 +1206,7 @@ A future experiment should determine whether learned behaviour transfers beyond 
 
 A future experiment may determine whether previously learned associations can change when consequences change.
 
-This is not part of M2.
+This was not part of M2.
 
 ### Affordance learning
 
@@ -1165,34 +1321,33 @@ Commercial strategy should follow evidence from the playable Creature.
 
 Current work is:
 
-PROJECT_STATE.md  
+accepted M2 baseline  
+→ authoritative M2 acceptance record  
 → GitHub CI  
-→ fresh M2 implementation chat  
-→ M2.1 food-memory primitives
+→ V0 specification  
+→ minimal Creature Embodiment vertical slice
 
 Exact sequence:
 
 1. save this file as docs/PROJECT_STATE.md;
 2. run npm run typecheck;
 3. run npm test;
-4. commit and push PROJECT_STATE.md;
-5. verify the GitHub commit;
-6. add a minimal GitHub Actions CI workflow;
-7. push the CI change;
-8. verify GitHub CI runs successfully;
-9. create a new Project chat called Creature Life — M2 Implementation;
-10. the new chat reads PROJECT_STATE.md and M2_SPEC.md and inspects current GitHub source and tests;
-11. implement M2.1 memory primitives;
-12. implement M2.2 legitimate sensory occlusion;
-13. commit the predefined M2 behavioural/control integration tests before neural memory integration;
-14. implement M2.3 and M2.4;
-15. complete controls, adversarial tests, forgetting, persistence, determinism and telemetry;
-16. conduct independent adversarial review;
-17. formally audit M2;
-18. require explicit M2 acceptance;
-19. after acceptance, begin V0.
+4. commit and push the PROJECT_STATE.md acceptance update;
+5. verify the exact GitHub commit and successful CI;
+6. begin V0 by writing a narrow V0 specification and acceptance criteria before implementation;
+7. inspect the accepted state → one simulation tick → new state path and existing presentation placeholders;
+8. decide the smallest technical presentation architecture needed for the vertical slice;
+9. implement one visible Creature, food, habitat boundaries and one static occluder without moving cognition into the UI;
+10. expose accepted biological, perceptual, neural and memory state through presentation;
+11. begin a developer Why/History view from causal telemetry;
+12. evaluate the slice for legibility, agency, attachment and individual replaceability;
+13. use embodiment evidence to decide what cognitive or environmental capability should come next.
 
-Do not start M2 implementation before the lightweight workflow transition is complete.
+Do not automatically start another long sequence of headless cognitive milestones after M2.
+
+Do not add advanced interaction mechanics merely to make V0 appear more game-like.
+
+V0 exists to determine whether the accepted organism becomes understandable and compelling when embodied.
 
 ---
 
@@ -1210,9 +1365,13 @@ npm test
 
 When both pass, commit with a concise message.
 
-When the user says a commit was pushed, verify GitHub before continuing.
+The user may simply report that both passed rather than pasting successful output.
 
-Once CI is active, GitHub should independently rerun the validation.
+When the user says a commit was pushed, verify the exact GitHub commit and CI before continuing.
+
+After a pushed change is verified and CI succeeds, continue immediately with concrete next implementation steps rather than stopping at a description of the next phase.
+
+GitHub CI independently reruns validation after pushes.
 
 ---
 
