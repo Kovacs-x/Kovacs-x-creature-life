@@ -93,6 +93,17 @@ export interface M1EpisodeConfig {
    * truth before the episode begins.
    */
   readonly foodX?: number;
+
+  /*
+   * Current environmental visibility
+   * condition for food perception.
+   *
+   * false is the M1-compatible default.
+   *
+   * This is world/sensory state, not
+   * cognitive memory.
+   */
+  readonly foodOccluded?: boolean;
 }
 
 export interface M1EpisodeState {
@@ -114,6 +125,18 @@ export interface M1EpisodeState {
 
   readonly food:
     FoodObjectState;
+
+  /*
+   * Current sensory accessibility of food.
+   *
+   * Optional so previously valid schema-1
+   * M1 checkpoints that do not contain this
+   * later field remain readable.
+   *
+   * Missing means false.
+   */
+  readonly foodOccluded?:
+    boolean;
 
   readonly brain:
     BrainState;
@@ -182,6 +205,10 @@ export function createM1EpisodeState(
         0.5,
       ),
 
+    foodOccluded:
+      config.foodOccluded ??
+      false,
+
     brain:
       config.brain ??
       createM1Brain(),
@@ -209,8 +236,16 @@ export function advanceM1Episode(
 
   /*
    * Perception is always rebuilt from the
-   * current world state.
+   * current world and sensory state.
+   *
+   * Missing foodOccluded is treated as
+   * false so earlier M1 checkpoints retain
+   * their original behaviour.
    */
+
+  const foodOccluded =
+    state.foodOccluded ??
+    false;
 
   const foodSignal =
     perceiveFood(
@@ -219,6 +254,10 @@ export function advanceM1Episode(
       {
         maxRange:
           M1_EPISODE_PERCEPTION_RANGE,
+      },
+      {
+        occluded:
+          foodOccluded,
       },
     );
 
@@ -424,6 +463,8 @@ export function advanceM1Episode(
 
     food,
 
+    foodOccluded,
+
     brain:
       plasticity.brain,
 
@@ -544,6 +585,12 @@ function assertM1EpisodeStateShape(
     !isVector(value.position) ||
     !isHungerState(value.hunger) ||
     !isFoodState(value.food) ||
+    (
+      value.foodOccluded !==
+        undefined &&
+      typeof value.foodOccluded !==
+        "boolean"
+    ) ||
     !isBrainState(value.brain) ||
     !isEligibilityTrace(
       value.eligibilityTrace,
