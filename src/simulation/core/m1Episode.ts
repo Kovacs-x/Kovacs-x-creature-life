@@ -63,6 +63,7 @@ import {
   FOOD_MEMORY_KIND,
   FOOD_MEMORY_SOURCE,
   FOOD_MEMORY_TRACE_SCHEMA_VERSION,
+  recallFoodMemory,
   type FoodMemoryTrace,
 } from "../memory/foodMemory.js";
 
@@ -90,19 +91,22 @@ export const M1_EPISODE_PERCEPTION_RANGE =
   10;
 
 export interface M1EpisodeConfig {
-  readonly learningEnabled: boolean;
+  readonly learningEnabled:
+    boolean;
 
-  readonly brain?: BrainState;
+  readonly brain?:
+    BrainState;
 
   /*
    * Optional only so adversarial tests can
    * place food at a different distance.
    *
    * This does not expose coordinates to the
-   * creature's brain. It configures world
+   * Creature's brain. It configures world
    * truth before the episode begins.
    */
-  readonly foodX?: number;
+  readonly foodX?:
+    number;
 
   /*
    * Current environmental visibility
@@ -113,27 +117,27 @@ export interface M1EpisodeConfig {
    * This is world/sensory state, not
    * cognitive memory.
    */
-  readonly foodOccluded?: boolean;
+  readonly foodOccluded?:
+    boolean;
 
   /*
-   * Enables formation and persistence of
-   * the M2 food-memory trace.
+   * Enables formation and use of the M2
+   * food-memory trace.
    *
    * false preserves the accepted M1
    * behaviour and provides the required
    * memory-disabled control.
-   *
-   * Enabling memory here does NOT connect
-   * memory to the brain or action system.
    */
-  readonly memoryEnabled?: boolean;
+  readonly memoryEnabled?:
+    boolean;
 }
 
 export interface M1EpisodeState {
   readonly schemaVersion:
     typeof M1_EPISODE_SCHEMA_VERSION;
 
-  readonly tickIndex: number;
+  readonly tickIndex:
+    number;
 
   /*
    * Explicit simulation time used by the
@@ -171,10 +175,6 @@ export interface M1EpisodeState {
   /*
    * Current sensory accessibility of food.
    *
-   * Optional so previously valid schema-1
-   * M1 checkpoints that do not contain this
-   * later field remain readable.
-   *
    * Missing means false.
    */
   readonly foodOccluded?:
@@ -183,12 +183,9 @@ export interface M1EpisodeState {
   /*
    * Persistent sensory-derived memory.
    *
-   * This state belongs to the episode rather
-   * than a test closure or the UI.
-   *
-   * It is deliberately NOT supplied to the
-   * brain yet. M2.3 will perform that
-   * integration after M2.2A is committed.
+   * It is part of simulation state and not
+   * a test closure, UI value or hidden world
+   * lookup.
    */
   readonly foodMemory?:
     FoodMemoryTrace | null;
@@ -196,19 +193,14 @@ export interface M1EpisodeState {
   readonly brain:
     BrainState;
 
-  /*
-   * This is transient neural state.
-   *
-   * It must survive save/load because a
-   * later reward can reinforce activity
-   * that happened on an earlier tick.
-   */
   readonly eligibilityTrace:
     readonly ConnectionEligibility[];
 
-  readonly complete: boolean;
+  readonly complete:
+    boolean;
 
-  readonly ate: boolean;
+  readonly ate:
+    boolean;
 
   readonly cumulativeReward:
     number;
@@ -218,13 +210,17 @@ export interface M1EpisodeState {
 }
 
 export function createM1EpisodeState(
-  config: M1EpisodeConfig,
+  config:
+    M1EpisodeConfig,
 ): M1EpisodeState {
   const foodX =
-    config.foodX ?? 1.2;
+    config.foodX ??
+    1.2;
 
   if (
-    !Number.isFinite(foodX) ||
+    !Number.isFinite(
+      foodX,
+    ) ||
     foodX <= 0
   ) {
     throw new RangeError(
@@ -238,7 +234,8 @@ export function createM1EpisodeState(
 
     tickIndex: 0,
 
-    simulationTimeSeconds: 0,
+    simulationTimeSeconds:
+      0,
 
     learningEnabled:
       config.learningEnabled,
@@ -270,26 +267,33 @@ export function createM1EpisodeState(
       config.foodOccluded ??
       false,
 
-    foodMemory: null,
+    foodMemory:
+      null,
 
     brain:
       config.brain ??
       createM1Brain(),
 
-    eligibilityTrace: [],
+    eligibilityTrace:
+      [],
 
-    complete: false,
+    complete:
+      false,
 
-    ate: false,
+    ate:
+      false,
 
-    cumulativeReward: 0,
+    cumulativeReward:
+      0,
 
-    weightChanges: [],
+    weightChanges:
+      [],
   };
 }
 
 export function advanceM1Episode(
-  state: M1EpisodeState,
+  state:
+    M1EpisodeState,
 ): M1EpisodeState {
   if (state.complete) {
     throw new Error(
@@ -301,10 +305,9 @@ export function advanceM1Episode(
    * Earlier M1 checkpoints do not contain
    * explicit simulationTimeSeconds.
    *
-   * Because this episode has always used a
-   * fixed one-second tick, tickIndex provides
-   * the deterministic backward-compatible
-   * reconstruction.
+   * The episode has always used one-second
+   * ticks, so tickIndex reconstructs the
+   * corresponding explicit simulation time.
    */
   const simulationTimeSeconds =
     state.simulationTimeSeconds ??
@@ -319,27 +322,26 @@ export function advanceM1Episode(
     state.memoryEnabled ??
     false;
 
-  /*
-   * Perception is always rebuilt from the
-   * current world and sensory state.
-   *
-   * Missing foodOccluded is treated as
-   * false so earlier M1 checkpoints retain
-   * their original behaviour.
-   */
-
   const foodOccluded =
     state.foodOccluded ??
     false;
 
+  /*
+   * Direct perception is rebuilt from the
+   * current world and sensory conditions on
+   * every tick.
+   */
   const foodSignal =
     perceiveFood(
       state.position,
+
       state.food,
+
       {
         maxRange:
           M1_EPISODE_PERCEPTION_RANGE,
       },
+
       {
         occluded:
           foodOccluded,
@@ -347,13 +349,15 @@ export function advanceM1Episode(
     );
 
   /*
-   * M2 memory state is updated only from
-   * legitimate perception or from the
-   * previous persistent trace.
+   * MEMORY STATE UPDATE
    *
-   * It does not inspect FoodObjectState
-   * coordinates and is not supplied to the
-   * brain in this step.
+   * Memory may only come from:
+   *
+   * 1. a legitimate direct perception; or
+   * 2. the Creature's previous trace.
+   *
+   * This code does not inspect hidden food
+   * coordinates while recalling.
    */
   let foodMemory:
     FoodMemoryTrace | null =
@@ -361,13 +365,14 @@ export function advanceM1Episode(
       null;
 
   if (!memoryEnabled) {
-    foodMemory = null;
+    foodMemory =
+      null;
   } else if (
     foodSignal !== null
   ) {
     /*
-     * New direct perception has epistemic
-     * priority and refreshes the trace.
+     * Current legitimate evidence refreshes
+     * the memory trace.
      */
     foodMemory =
       encodeFoodMemory(
@@ -378,10 +383,8 @@ export function advanceM1Episode(
     foodMemory !== null
   ) {
     /*
-     * No direct perception is available.
-     *
-     * Existing memory may persist, decay or
-     * deterministically expire.
+     * Without direct perception, the
+     * previous internal trace simply ages.
      */
     foodMemory =
       advanceFoodMemory(
@@ -389,6 +392,27 @@ export function advanceM1Episode(
         simulationTimeSeconds,
       );
   }
+
+  /*
+   * M2.3 RECALL
+   *
+   * Recall is exposed to cognition only
+   * while direct food perception is absent.
+   *
+   * This prevents a current direct signal
+   * and its freshly encoded memory from
+   * double-counting the same evidence.
+   *
+   * Direct perception and recall therefore
+   * remain causally and neurally distinct.
+   */
+  const foodMemoryRecall =
+    memoryEnabled &&
+    foodSignal === null
+      ? recallFoodMemory(
+          foodMemory,
+        )
+      : null;
 
   const hungerSignal =
     senseHunger(
@@ -403,24 +427,25 @@ export function advanceM1Episode(
     );
 
   /*
-   * M2.2A LOCK:
+   * M2.3 NEURAL INTEGRATION
    *
-   * Behaviour remains entirely the existing
-   * M1 neural evaluation.
+   * Recall now enters through a weighted
+   * neural input.
    *
-   * foodMemory is intentionally NOT passed
-   * here.
-   *
-   * M2.3 may only change this after the
-   * behavioural/control expectations have
-   * been committed.
+   * It does NOT directly choose SEEK and
+   * does NOT directly command movement.
    */
   const decision =
     evaluateM1Brain(
       state.brain,
+
       hungerSignal,
+
       foodSignal,
+
       contactSignal,
+
+      foodMemoryRecall,
     );
 
   const activations:
@@ -443,22 +468,20 @@ export function advanceM1Episode(
   const selectedEligibilities =
     keepEligibilitiesForTarget(
       decision.brain,
+
       rawEligibilities,
+
       actionIdToNodeId(
         decision.selectedActionId,
       ),
     );
 
-  /*
-   * Previous neural eligibility decays
-   * across time but remains available for
-   * delayed biological reward.
-   */
-
   const eligibilityTrace =
     mergeEligibilityTrace(
       state.eligibilityTrace,
+
       selectedEligibilities,
+
       {
         decay: 0.5,
       },
@@ -477,16 +500,17 @@ export function advanceM1Episode(
     false;
 
   /*
-   * Execute only the action that won the
-   * competition.
+   * M2.3 MOVEMENT BOUNDARY
    *
-   * M2.2A deliberately allows movement only
-   * from CURRENT direct perception.
+   * SEEK may now win because of memory.
    *
-   * Memory-guided movement is not added
-   * until M2.4.
+   * However, movement is STILL allowed only
+   * when current direct food perception
+   * exists.
+   *
+   * Recalled directional movement is added
+   * separately in M2.4.
    */
-
   if (
     decision.selectedActionId ===
       "seek" &&
@@ -512,11 +536,6 @@ export function advanceM1Episode(
     position =
       movement.position;
   }
-
-  /*
-   * Biological state immediately before
-   * any possible eating consequence.
-   */
 
   const hungerBeforeConsequence =
     hunger;
@@ -544,10 +563,9 @@ export function advanceM1Episode(
   }
 
   /*
-   * Reward comes only from the immediate
-   * biological consequence of this tick.
+   * Reward continues to derive only from
+   * biological consequence.
    */
-
   const reward =
     deriveEnergyReward(
       hungerBeforeConsequence,
@@ -557,32 +575,33 @@ export function advanceM1Episode(
   const plasticity =
     applyRewardPlasticity(
       decision.brain,
+
       eligibilityTrace,
+
       reward,
+
       {
-        learningRate: 0.25,
-        minWeight: -1,
-        maxWeight: 1,
+        learningRate:
+          0.25,
+
+        minWeight:
+          -1,
+
+        maxWeight:
+          1,
 
         learningEnabled:
           state.learningEnabled,
       },
     );
 
-  /*
-   * If food was not eaten, simulation time
-   * advances and metabolism consumes energy.
-   *
-   * Eating itself is evaluated before this
-   * unrelated metabolic change so reward
-   * remains causally clean.
-   */
-
   if (!ateThisTick) {
     hunger =
       advanceHungerOverTime(
         hunger,
+
         M1_EPISODE_TICK_SECONDS,
+
         {
           energyLossPerSecond:
             M1_EPISODE_ENERGY_LOSS_PER_SECOND,
@@ -591,12 +610,11 @@ export function advanceM1Episode(
   }
 
   /*
-   * Memory ages through the same explicit
-   * simulated time that has now elapsed.
+   * Store memory at the end-of-tick
+   * simulation time.
    *
-   * Absolute simulation time is supplied to
-   * the pure M2 memory primitive, so decay
-   * does not depend on wall-clock time.
+   * Decay is based on absolute simulation
+   * time, so this remains deterministic.
    */
   if (
     memoryEnabled &&
@@ -658,7 +676,8 @@ export function advanceM1Episode(
 }
 
 export function serializeM1EpisodeState(
-  state: M1EpisodeState,
+  state:
+    M1EpisodeState,
 ): string {
   assertM1EpisodeStateShape(
     state,
@@ -670,9 +689,11 @@ export function serializeM1EpisodeState(
 }
 
 export function deserializeM1EpisodeState(
-  serialized: string,
+  serialized:
+    string,
 ): M1EpisodeState {
-  let parsed: unknown;
+  let parsed:
+    unknown;
 
   try {
     parsed =
@@ -683,7 +704,8 @@ export function deserializeM1EpisodeState(
     throw new Error(
       "M1 episode state is not valid JSON.",
       {
-        cause: error,
+        cause:
+          error,
       },
     );
   }
@@ -696,7 +718,8 @@ export function deserializeM1EpisodeState(
 }
 
 function actionIdToNodeId(
-  actionId: string,
+  actionId:
+    string,
 ): string {
   switch (actionId) {
     case "idle":
@@ -719,7 +742,8 @@ function actionIdToNodeId(
 }
 
 function assertM1EpisodeStateShape(
-  value: unknown,
+  value:
+    unknown,
 ): asserts value is M1EpisodeState {
   if (!isRecord(value)) {
     throw new Error(
@@ -740,8 +764,9 @@ function assertM1EpisodeStateShape(
     !Number.isInteger(
       value.tickIndex,
     ) ||
-    (value.tickIndex as number) <
-      0
+    (
+      value.tickIndex as number
+    ) < 0
   ) {
     throw new Error(
       "M1 episode tickIndex is invalid.",
@@ -760,23 +785,36 @@ function assertM1EpisodeStateShape(
           0
       )
     ) ||
+
     typeof value.learningEnabled !==
       "boolean" ||
+
     (
       value.memoryEnabled !==
         undefined &&
       typeof value.memoryEnabled !==
         "boolean"
     ) ||
-    !isVector(value.position) ||
-    !isHungerState(value.hunger) ||
-    !isFoodState(value.food) ||
+
+    !isVector(
+      value.position,
+    ) ||
+
+    !isHungerState(
+      value.hunger,
+    ) ||
+
+    !isFoodState(
+      value.food,
+    ) ||
+
     (
       value.foodOccluded !==
         undefined &&
       typeof value.foodOccluded !==
         "boolean"
     ) ||
+
     (
       value.foodMemory !==
         undefined &&
@@ -786,17 +824,25 @@ function assertM1EpisodeStateShape(
         value.foodMemory,
       )
     ) ||
-    !isBrainState(value.brain) ||
+
+    !isBrainState(
+      value.brain,
+    ) ||
+
     !isEligibilityTrace(
       value.eligibilityTrace,
     ) ||
+
     typeof value.complete !==
       "boolean" ||
+
     typeof value.ate !==
       "boolean" ||
+
     !isFiniteNumber(
       value.cumulativeReward,
     ) ||
+
     !isWeightChanges(
       value.weightChanges,
     )
@@ -808,20 +854,29 @@ function assertM1EpisodeStateShape(
 }
 
 function isVector(
-  value: unknown,
+  value:
+    unknown,
 ): value is {
-  readonly x: number;
-  readonly y: number;
+  readonly x:
+    number;
+
+  readonly y:
+    number;
 } {
   return (
     isRecord(value) &&
-    isFiniteNumber(value.x) &&
-    isFiniteNumber(value.y)
+    isFiniteNumber(
+      value.x,
+    ) &&
+    isFiniteNumber(
+      value.y,
+    )
   );
 }
 
 function isHungerState(
-  value: unknown,
+  value:
+    unknown,
 ): value is HungerState {
   if (!isRecord(value)) {
     return false;
@@ -839,36 +894,47 @@ function isHungerState(
   }
 
   return (
-    value.maxEnergy > 0 &&
-    value.energy >= 0 &&
+    value.maxEnergy >
+      0 &&
+    value.energy >=
+      0 &&
     value.energy <=
       value.maxEnergy
   );
 }
 
 function isFoodState(
-  value: unknown,
+  value:
+    unknown,
 ): value is FoodObjectState {
   return (
     isRecord(value) &&
+
     typeof value.id ===
       "string" &&
+
     value.kind ===
       "food" &&
+
     isVector(
       value.position,
     ) &&
+
     isFiniteNumber(
       value.energyValue,
     ) &&
-    value.energyValue > 0 &&
+
+    value.energyValue >
+      0 &&
+
     typeof value.consumed ===
       "boolean"
   );
 }
 
 function isFoodMemoryTrace(
-  value: unknown,
+  value:
+    unknown,
 ): value is FoodMemoryTrace {
   if (!isRecord(value)) {
     return false;
@@ -877,12 +943,16 @@ function isFoodMemoryTrace(
   if (
     value.schemaVersion !==
       FOOD_MEMORY_TRACE_SCHEMA_VERSION ||
+
     value.kind !==
       FOOD_MEMORY_KIND ||
+
     value.source !==
       FOOD_MEMORY_SOURCE ||
+
     typeof value.sourceFoodId !==
       "string" ||
+
     !value.sourceFoodId.trim()
   ) {
     return false;
@@ -892,16 +962,24 @@ function isFoodMemoryTrace(
     !isFiniteNumber(
       value.encodedAtSimulationTimeSeconds,
     ) ||
+
     value.encodedAtSimulationTimeSeconds <
       0 ||
+
     !isFiniteNumber(
       value.ageSeconds,
     ) ||
-    value.ageSeconds < 0 ||
+
+    value.ageSeconds <
+      0 ||
+
     !isFiniteNumber(
       value.confidence,
     ) ||
-    value.confidence < 0 ||
+
+    value.confidence <
+      0 ||
+
     value.confidence >
       FOOD_MEMORY_INITIAL_CONFIDENCE
   ) {
@@ -912,6 +990,7 @@ function isFoodMemoryTrace(
     !isDirectionComponent(
       value.rememberedDirectionX,
     ) ||
+
     !isDirectionComponent(
       value.rememberedDirectionY,
     )
@@ -923,15 +1002,18 @@ function isFoodMemoryTrace(
     isFiniteNumber(
       value.rememberedPerceptualStrength,
     ) &&
+
     value.rememberedPerceptualStrength >=
       0 &&
+
     value.rememberedPerceptualStrength <=
       1
   );
 }
 
 function isDirectionComponent(
-  value: unknown,
+  value:
+    unknown,
 ): value is number {
   return (
     isFiniteNumber(value) &&
@@ -941,14 +1023,19 @@ function isDirectionComponent(
 }
 
 function isBrainState(
-  value: unknown,
+  value:
+    unknown,
 ): value is BrainState {
   if (
     !isRecord(value) ||
-    value.schemaVersion !== 1 ||
+
+    value.schemaVersion !==
+      1 ||
+
     !Array.isArray(
       value.nodes,
     ) ||
+
     !Array.isArray(
       value.connections,
     )
@@ -960,10 +1047,13 @@ function isBrainState(
     value.nodes.every(
       (node) =>
         isRecord(node) &&
+
         typeof node.id ===
           "string" &&
+
         typeof node.module ===
           "string" &&
+
         isFiniteNumber(
           node.activation,
         ),
@@ -972,16 +1062,23 @@ function isBrainState(
   const connectionsValid =
     value.connections.every(
       (connection) =>
-        isRecord(connection) &&
+        isRecord(
+          connection,
+        ) &&
+
         typeof connection.id ===
           "string" &&
+
         typeof connection.sourceNodeId ===
           "string" &&
+
         typeof connection.targetNodeId ===
           "string" &&
+
         isFiniteNumber(
           connection.weight,
         ) &&
+
         typeof connection.enabled ===
           "boolean",
     );
@@ -993,15 +1090,19 @@ function isBrainState(
 }
 
 function isEligibilityTrace(
-  value: unknown,
+  value:
+    unknown,
 ): value is readonly ConnectionEligibility[] {
   return (
     Array.isArray(value) &&
+
     value.every(
       (entry) =>
         isRecord(entry) &&
+
         typeof entry.connectionId ===
           "string" &&
+
         isFiniteNumber(
           entry.eligibility,
         ),
@@ -1010,21 +1111,27 @@ function isEligibilityTrace(
 }
 
 function isWeightChanges(
-  value: unknown,
+  value:
+    unknown,
 ): value is readonly WeightChange[] {
   return (
     Array.isArray(value) &&
+
     value.every(
       (change) =>
         isRecord(change) &&
+
         typeof change.connectionId ===
           "string" &&
+
         isFiniteNumber(
           change.before,
         ) &&
+
         isFiniteNumber(
           change.after,
         ) &&
+
         isFiniteNumber(
           change.delta,
         ),
@@ -1033,17 +1140,21 @@ function isWeightChanges(
 }
 
 function isFiniteNumber(
-  value: unknown,
+  value:
+    unknown,
 ): value is number {
   return (
     typeof value ===
       "number" &&
-    Number.isFinite(value)
+    Number.isFinite(
+      value,
+    )
   );
 }
 
 function isRecord(
-  value: unknown,
+  value:
+    unknown,
 ): value is Record<
   string,
   unknown
@@ -1051,7 +1162,10 @@ function isRecord(
   return (
     typeof value ===
       "object" &&
-    value !== null &&
-    !Array.isArray(value)
+    value !==
+      null &&
+    !Array.isArray(
+      value,
+    )
   );
 }

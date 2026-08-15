@@ -24,8 +24,11 @@ import {
 } from "../../src/simulation/senses/foodPerception.js";
 
 function getActivation(
-  state: M1EpisodeState,
-  nodeId: string,
+  state:
+    M1EpisodeState,
+
+  nodeId:
+    string,
 ): number {
   const node =
     state.brain.nodes.find(
@@ -48,33 +51,51 @@ function runOccludedMemoryProbe() {
    * Both branches begin physically and
    * biologically equivalent.
    *
-   * The sole causal difference is whether
-   * food memory is enabled.
+   * Their brains also have the same neural
+   * architecture.
+   *
+   * The causal difference is whether usable
+   * memory is enabled.
    */
   const memoryEnabledInitial =
-    createM1EpisodeState({
-      learningEnabled: false,
-      memoryEnabled: true,
-      foodX: 3,
-      foodOccluded: false,
-    });
+    createM1EpisodeState(
+      {
+        learningEnabled:
+          false,
+
+        memoryEnabled:
+          true,
+
+        foodX:
+          3,
+
+        foodOccluded:
+          false,
+      },
+    );
 
   const memoryDisabledInitial =
-    createM1EpisodeState({
-      learningEnabled: false,
-      memoryEnabled: false,
-      foodX: 3,
-      foodOccluded: false,
-    });
+    createM1EpisodeState(
+      {
+        learningEnabled:
+          false,
+
+        memoryEnabled:
+          false,
+
+        foodX:
+          3,
+
+        foodOccluded:
+          false,
+      },
+    );
 
   /*
    * TICK 1
    *
-   * Food is directly perceptible to both
-   * branches.
-   *
-   * The memory-enabled branch must form its
-   * trace from that legitimate perception.
+   * Both branches receive genuine direct
+   * food perception.
    */
   const memoryEnabledAfterVisible =
     advanceM1Episode(
@@ -87,25 +108,28 @@ function runOccludedMemoryProbe() {
     );
 
   /*
-   * Environmental change before tick 2:
-   *
-   * food continues to physically exist but
-   * direct sensory access is removed.
+   * Food remains physically present but
+   * becomes unavailable to direct sensory
+   * perception.
    */
   const memoryEnabledOccludedInput = {
     ...memoryEnabledAfterVisible,
-    foodOccluded: true,
+
+    foodOccluded:
+      true,
   };
 
   const memoryDisabledOccludedInput = {
     ...memoryDisabledAfterVisible,
-    foodOccluded: true,
+
+    foodOccluded:
+      true,
   };
 
   /*
    * TICK 2
    *
-   * This is the locked behavioural probe.
+   * The M2 behavioural probe.
    */
   const memoryEnabledAfterOcclusion =
     advanceM1Episode(
@@ -136,10 +160,6 @@ describe(
       const probe =
         runOccludedMemoryProbe();
 
-      /*
-       * Both branches had the same direct
-       * experience during the visible tick.
-       */
       expect(
         probe
           .memoryEnabledAfterVisible
@@ -161,12 +181,8 @@ describe(
       );
 
       /*
-       * Only the enabled branch formed a
-       * persistent trace.
-       *
-       * The trace was generated internally by
-       * advanceM1Episode from its legitimate
-       * FoodPerceptionSignal.
+       * The enabled branch forms its memory
+       * from legitimate direct perception.
        */
       expect(
         probe
@@ -192,11 +208,6 @@ describe(
         recall,
       ).not.toBeNull();
 
-      /*
-       * The remembered direction points east
-       * because that is the direction that was
-       * legitimately sensed on tick 1.
-       */
       expect(
         recall?.directionX ??
           0,
@@ -206,6 +217,31 @@ describe(
         recall?.directionY ??
           1,
       ).toBeCloseTo(0);
+
+      /*
+       * During genuine current perception,
+       * the direct neural channel is active
+       * and the remembered channel is not
+       * double-counted.
+       */
+      expect(
+        getActivation(
+          probe
+            .memoryEnabledAfterVisible,
+
+          M1_NODE_IDS.foodInput,
+        ),
+      ).toBeGreaterThan(0);
+
+      expect(
+        getActivation(
+          probe
+            .memoryEnabledAfterVisible,
+
+          M1_NODE_IDS
+            .rememberedFoodInput,
+        ),
+      ).toBe(0);
 
       /*
        * Direct perception is genuinely absent
@@ -235,9 +271,6 @@ describe(
         directFoodSignal,
       ).toBeNull();
 
-      /*
-       * The food still physically exists.
-       */
       expect(
         probe
           .memoryEnabledOccludedInput
@@ -255,10 +288,6 @@ describe(
           .food,
       );
 
-      /*
-       * Memory survives the occluded tick and
-       * remains recallable.
-       */
       const laterRecall =
         recallFoodMemory(
           probe
@@ -276,6 +305,43 @@ describe(
           .memoryDisabledAfterOcclusion
           .foodMemory,
       ).toBeNull();
+
+      /*
+       * On the occluded tick, the current
+       * direct-food neural channel is zero.
+       */
+      expect(
+        getActivation(
+          probe
+            .memoryEnabledAfterOcclusion,
+
+          M1_NODE_IDS.foodInput,
+        ),
+      ).toBe(0);
+
+      /*
+       * Only the memory-enabled Creature has
+       * recalled-food neural activation.
+       */
+      expect(
+        getActivation(
+          probe
+            .memoryEnabledAfterOcclusion,
+
+          M1_NODE_IDS
+            .rememberedFoodInput,
+        ),
+      ).toBeGreaterThan(0);
+
+      expect(
+        getActivation(
+          probe
+            .memoryDisabledAfterOcclusion,
+
+          M1_NODE_IDS
+            .rememberedFoodInput,
+        ),
+      ).toBe(0);
     });
 
     it("the memory-disabled control does not continue seeking after direct perception disappears", () => {
@@ -299,12 +365,14 @@ describe(
       const seekActivation =
         getActivation(
           controlAfter,
+
           M1_NODE_IDS.seekOutput,
         );
 
       const idleActivation =
         getActivation(
           controlAfter,
+
           M1_NODE_IDS.idleOutput,
         );
 
@@ -317,19 +385,25 @@ describe(
 
     it("a Creature with no prior perception has no food memory or memory-guided movement", () => {
       const initial =
-        createM1EpisodeState({
-          learningEnabled: false,
+        createM1EpisodeState(
+          {
+            learningEnabled:
+              false,
 
-          memoryEnabled: true,
+            memoryEnabled:
+              true,
 
-          /*
-           * Food exists from the beginning,
-           * but sensory occlusion prevents any
-           * legitimate food perception.
-           */
-          foodX: 3,
-          foodOccluded: true,
-        });
+            /*
+             * Food physically exists but is
+             * occluded from the beginning.
+             */
+            foodX:
+              3,
+
+            foodOccluded:
+              true,
+          },
+        );
 
       expect(
         initial.food.consumed,
@@ -349,6 +423,15 @@ describe(
       ).toBeNull();
 
       expect(
+        getActivation(
+          afterTick,
+
+          M1_NODE_IDS
+            .rememberedFoodInput,
+        ),
+      ).toBe(0);
+
+      expect(
         afterTick.position,
       ).toEqual(
         initial.position,
@@ -356,19 +439,18 @@ describe(
     });
 
     /*
-     * EXPECTED FAILURE UNTIL M2.3
+     * M2.3 SATISFIED
      *
-     * This assertion is committed before
-     * memory is connected to the neural
-     * architecture.
+     * This was committed as an expected
+     * failure during M2.2A.
      *
-     * Once M2.3 makes this succeed,
-     * it.fails must be changed to ordinary
-     * it. If the implementation changes the
-     * wrong behaviour, this contract remains
-     * unsatisfied.
+     * It is now an ordinary passing contract.
+     *
+     * Recall must increase SEEK activation
+     * through the neural architecture, not by
+     * directly selecting an action.
      */
-    it.fails("legitimate recall increases SEEK activation relative to the equivalent memory-disabled control", () => {
+    it("legitimate recall increases SEEK activation relative to the equivalent memory-disabled control", () => {
       const probe =
         runOccludedMemoryProbe();
 
@@ -396,18 +478,14 @@ describe(
     });
 
     /*
-     * EXPECTED FAILURE UNTIL M2.3 + M2.4
+     * EXPECTED FAILURE UNTIL M2.4
      *
-     * Successful behaviour requires BOTH:
+     * M2.3 may allow memory to make SEEK win,
+     * but it still must not move using recall.
      *
-     * 1. SEEK to win ordinary neural/action
-     *    competition;
-     * 2. physical movement in the remembered
-     *    direction.
-     *
-     * A direct memory-to-movement shortcut
-     * would therefore still fail this
-     * contract if SEEK did not win.
+     * M2.4 will add remembered-direction
+     * movement only after SEEK has already won
+     * normal action competition.
      */
     it.fails("memory-enabled behaviour wins normal SEEK competition and produces more remembered-direction movement than control", () => {
       const probe =
@@ -424,18 +502,20 @@ describe(
       const memorySeekActivation =
         getActivation(
           memoryAfter,
+
           M1_NODE_IDS.seekOutput,
         );
 
       const memoryIdleActivation =
         getActivation(
           memoryAfter,
+
           M1_NODE_IDS.idleOutput,
         );
 
       /*
-       * Normal competition must first support
-       * SEEK.
+       * Normal neural competition must first
+       * support SEEK.
        */
       expect(
         memorySeekActivation,
@@ -444,13 +524,9 @@ describe(
       );
 
       /*
-       * Remembered direction from the
-       * legitimate tick-1 perception was east.
-       *
-       * Therefore the memory-enabled branch
-       * must make more positive-X progress
-       * than its otherwise equivalent
-       * memory-disabled control.
+       * M2.4 must then produce physical
+       * progress in the legitimately
+       * remembered eastward direction.
        */
       expect(
         memoryAfter.position.x,
