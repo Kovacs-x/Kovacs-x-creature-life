@@ -51,7 +51,7 @@ function runOccludedMemoryProbe() {
    * Both branches begin physically and
    * biologically equivalent.
    *
-   * Their brains also have the same neural
+   * Their brains have the same neural
    * architecture.
    *
    * The causal difference is whether usable
@@ -129,7 +129,7 @@ function runOccludedMemoryProbe() {
   /*
    * TICK 2
    *
-   * The M2 behavioural probe.
+   * The locked M2 behavioural probe.
    */
   const memoryEnabledAfterOcclusion =
     advanceM1Episode(
@@ -263,7 +263,8 @@ describe(
           },
 
           {
-            occluded: true,
+            occluded:
+              true,
           },
         );
 
@@ -393,10 +394,6 @@ describe(
             memoryEnabled:
               true,
 
-            /*
-             * Food physically exists but is
-             * occluded from the beginning.
-             */
             foodX:
               3,
 
@@ -441,14 +438,8 @@ describe(
     /*
      * M2.3 SATISFIED
      *
-     * This was committed as an expected
-     * failure during M2.2A.
-     *
-     * It is now an ordinary passing contract.
-     *
-     * Recall must increase SEEK activation
-     * through the neural architecture, not by
-     * directly selecting an action.
+     * Recall increases SEEK activation
+     * through the ordinary neural route.
      */
     it("legitimate recall increases SEEK activation relative to the equivalent memory-disabled control", () => {
       const probe =
@@ -478,16 +469,19 @@ describe(
     });
 
     /*
-     * EXPECTED FAILURE UNTIL M2.4
+     * M2.4 SATISFIED
      *
-     * M2.3 may allow memory to make SEEK win,
-     * but it still must not move using recall.
+     * This contract was originally committed
+     * as an expected failure during M2.2A.
      *
-     * M2.4 will add remembered-direction
-     * movement only after SEEK has already won
-     * normal action competition.
+     * Memory must first contribute to a
+     * winning SEEK action through normal
+     * competition.
+     *
+     * Only after that action wins may its
+     * recalled direction influence movement.
      */
-    it.fails("memory-enabled behaviour wins normal SEEK competition and produces more remembered-direction movement than control", () => {
+    it("memory-enabled behaviour wins normal SEEK competition and produces more remembered-direction movement than control", () => {
       const probe =
         runOccludedMemoryProbe();
 
@@ -524,9 +518,13 @@ describe(
       );
 
       /*
-       * M2.4 must then produce physical
-       * progress in the legitimately
-       * remembered eastward direction.
+       * The legitimately remembered direction
+       * was east.
+       *
+       * The memory-enabled branch must make
+       * greater eastward physical progress
+       * than its otherwise equivalent
+       * memory-disabled control.
        */
       expect(
         memoryAfter.position.x,

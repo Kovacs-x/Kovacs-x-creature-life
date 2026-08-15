@@ -232,7 +232,8 @@ export function createM1EpisodeState(
     schemaVersion:
       M1_EPISODE_SCHEMA_VERSION,
 
-    tickIndex: 0,
+    tickIndex:
+      0,
 
     simulationTimeSeconds:
       0,
@@ -394,17 +395,15 @@ export function advanceM1Episode(
   }
 
   /*
-   * M2.3 RECALL
+   * RECALL
    *
-   * Recall is exposed to cognition only
-   * while direct food perception is absent.
+   * Recall is exposed only while current
+   * direct food perception is absent.
    *
-   * This prevents a current direct signal
-   * and its freshly encoded memory from
-   * double-counting the same evidence.
-   *
-   * Direct perception and recall therefore
-   * remain causally and neurally distinct.
+   * Direct evidence therefore retains
+   * epistemic priority and is not combined
+   * with a freshly encoded representation of
+   * the same evidence.
    */
   const foodMemoryRecall =
     memoryEnabled &&
@@ -427,13 +426,10 @@ export function advanceM1Episode(
     );
 
   /*
-   * M2.3 NEURAL INTEGRATION
+   * Recall participates through the normal
+   * weighted neural architecture.
    *
-   * Recall now enters through a weighted
-   * neural input.
-   *
-   * It does NOT directly choose SEEK and
-   * does NOT directly command movement.
+   * It does not directly choose an action.
    */
   const decision =
     evaluateM1Brain(
@@ -500,41 +496,60 @@ export function advanceM1Episode(
     false;
 
   /*
-   * M2.3 MOVEMENT BOUNDARY
+   * M2.4 MEMORY-GUIDED MOVEMENT
    *
-   * SEEK may now win because of memory.
+   * Direction does not cause movement.
    *
-   * However, movement is STILL allowed only
-   * when current direct food perception
-   * exists.
+   * SEEK must already have won the same
+   * generic neural/action competition used
+   * elsewhere.
    *
-   * Recalled directional movement is added
-   * separately in M2.4.
+   * Once SEEK has won:
+   *
+   * 1. current direct direction has priority;
+   * 2. otherwise a valid recalled direction
+   *    may be used;
+   * 3. otherwise no movement occurs.
+   *
+   * Neither route provides the movement
+   * executor with a food object, object ID or
+   * hidden target coordinates.
    */
   if (
     decision.selectedActionId ===
-      "seek" &&
-    foodSignal !== null
+    "seek"
   ) {
-    const movement =
-      moveAlongDirection(
-        position,
+    const movementDirection =
+      foodSignal ??
+      foodMemoryRecall;
 
-        foodSignal.directionX,
-        foodSignal.directionY,
+    if (
+      movementDirection !==
+      null
+    ) {
+      const movement =
+        moveAlongDirection(
+          position,
 
-        M1_EPISODE_MOVE_DISTANCE,
+          movementDirection
+            .directionX,
 
-        {
-          minX: 0,
-          minY: 0,
-          maxX: 10,
-          maxY: 10,
-        },
-      );
+          movementDirection
+            .directionY,
 
-    position =
-      movement.position;
+          M1_EPISODE_MOVE_DISTANCE,
+
+          {
+            minX: 0,
+            minY: 0,
+            maxX: 10,
+            maxY: 10,
+          },
+        );
+
+      position =
+        movement.position;
+    }
   }
 
   const hungerBeforeConsequence =
@@ -613,8 +628,8 @@ export function advanceM1Episode(
    * Store memory at the end-of-tick
    * simulation time.
    *
-   * Decay is based on absolute simulation
-   * time, so this remains deterministic.
+   * Decay remains based only on explicit
+   * simulation time.
    */
   if (
     memoryEnabled &&
@@ -632,7 +647,8 @@ export function advanceM1Episode(
       M1_EPISODE_SCHEMA_VERSION,
 
     tickIndex:
-      state.tickIndex + 1,
+      state.tickIndex +
+      1,
 
     simulationTimeSeconds:
       nextSimulationTimeSeconds,
