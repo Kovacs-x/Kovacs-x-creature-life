@@ -62,10 +62,10 @@ export function worldCoordinateToViewportPercent(
 }
 
 /*
- * V0.2 BROWSER RENDERER
+ * V0 BROWSER RENDERER
  *
  * This renderer accepts only the
- * presentation model created by V0.1.
+ * presentation model.
  *
  * It cannot:
  *
@@ -74,7 +74,8 @@ export function worldCoordinateToViewportPercent(
  * - evaluate cognition;
  * - create memories;
  * - choose actions;
- * - move the authoritative Creature.
+ * - move the authoritative Creature;
+ * - determine whether food is perceptible.
  *
  * Its only responsibility is to display
  * presentation data.
@@ -108,7 +109,7 @@ export function mountV0Habitat(
           class="v0-phase-badge"
           aria-label="Current development phase"
         >
-          V0.2
+          V0.4
         </div>
       </header>
 
@@ -144,6 +145,11 @@ export function mountV0Habitat(
           ></div>
 
           <div
+            data-v0-sensory-screen
+            aria-label="Non-solid sensory screen"
+          ></div>
+
+          <div
             class="v0-food"
             data-v0-food
             aria-label="Food"
@@ -174,8 +180,9 @@ export function mountV0Habitat(
         </div>
 
         <p class="v0-habitat-note">
-          World position is authoritative simulation
-          state. Screen placement is presentation only.
+          The translucent sensory screen affects
+          sight only. It is deliberately non-solid
+          and does not block Creature movement.
         </p>
       </section>
 
@@ -269,8 +276,8 @@ export function mountV0Habitat(
       </section>
 
       <footer class="v0-footer">
-        V0.2 is display-only.
-        Play, pause and simulation stepping arrive in V0.3.
+        V0.4 derives sensory occlusion from
+        authoritative habitat geometry.
       </footer>
     </main>
   `;
@@ -286,6 +293,18 @@ export function mountV0Habitat(
       root,
       "[data-v0-food]",
     );
+
+  const sensoryScreen =
+    requireElement(
+      root,
+      "[data-v0-sensory-screen]",
+    );
+
+  configureSensoryScreen(
+    sensoryScreen,
+    model.environment
+      .sensoryOccluder,
+  );
 
   positionWorldElement(
     creature,
@@ -445,6 +464,106 @@ export function mountV0Habitat(
     "aria-valuenow",
     energyPercent.toFixed(1),
   );
+}
+
+function configureSensoryScreen(
+  element:
+    HTMLElement,
+
+  occluder:
+    V0PresentationModel[
+      "environment"
+    ]["sensoryOccluder"],
+): void {
+  const bottomPercent =
+    worldCoordinateToViewportPercent(
+      occluder.minY,
+    );
+
+  const topPercent =
+    worldCoordinateToViewportPercent(
+      occluder.maxY,
+    );
+
+  const heightPercent =
+    Math.max(
+      0,
+      topPercent -
+      bottomPercent,
+    );
+
+  element.dataset.active =
+    occluder.active
+      ? "true"
+      : "false";
+
+  element.style.position =
+    "absolute";
+
+  element.style.zIndex =
+    "1";
+
+  element.style.left =
+    `${worldCoordinateToViewportPercent(
+      occluder.x,
+    )}%`;
+
+  element.style.bottom =
+    `${bottomPercent}%`;
+
+  element.style.width =
+    "18px";
+
+  element.style.height =
+    `${heightPercent}%`;
+
+  element.style.transform =
+    "translateX(-50%)";
+
+  element.style.borderRadius =
+    "999px";
+
+  element.style.pointerEvents =
+    "none";
+
+  element.style.transition =
+    "none";
+
+  if (occluder.active) {
+    element.style.opacity =
+      "1";
+
+    element.style.border =
+      "1px solid rgba(65, 91, 98, 0.48)";
+
+    element.style.background =
+      "repeating-linear-gradient(135deg, rgba(89, 126, 136, 0.30) 0 6px, rgba(132, 163, 169, 0.16) 6px 12px)";
+
+    element.style.boxShadow =
+      "0 0 0 4px rgba(91, 124, 132, 0.08)";
+
+    element.setAttribute(
+      "aria-label",
+      "Active non-solid sensory screen blocking the current food sight line",
+    );
+  } else {
+    element.style.opacity =
+      "0.45";
+
+    element.style.border =
+      "1px dashed rgba(65, 91, 98, 0.45)";
+
+    element.style.background =
+      "rgba(89, 126, 136, 0.06)";
+
+    element.style.boxShadow =
+      "none";
+
+    element.setAttribute(
+      "aria-label",
+      "Inactive non-solid sensory screen",
+    );
+  }
 }
 
 function positionWorldElement(

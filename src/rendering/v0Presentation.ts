@@ -3,6 +3,10 @@ import {
   type M1EpisodeState,
 } from "../simulation/core/m1Episode.js";
 
+import {
+  deriveV0HabitatEnvironment,
+} from "../simulation/core/v0Habitat.js";
+
 export const V0_PRESENTATION_MODEL_SCHEMA_VERSION =
   1 as const;
 
@@ -22,7 +26,7 @@ export interface V0CreaturePresentation {
   /*
    * Authoritative simulation position.
    *
-   * A later renderer may transform these
+   * A renderer may transform these
    * coordinates into screen coordinates, but
    * this presentation model does not maintain
    * an independent physical position.
@@ -100,6 +104,31 @@ export interface V0FoodPresentation {
     boolean;
 }
 
+export interface V0SensoryOccluderPresentation {
+  /*
+   * Presentation copy of authoritative
+   * habitat geometry.
+   *
+   * These values are used only to draw the
+   * sensory screen.
+   *
+   * Sensory availability has already been
+   * determined by simulation-side habitat
+   * logic before rendering.
+   */
+  readonly active:
+    boolean;
+
+  readonly x:
+    number;
+
+  readonly minY:
+    number;
+
+  readonly maxY:
+    number;
+}
+
 export interface V0EnvironmentPresentation {
   /*
    * Current sensory accessibility of food
@@ -110,6 +139,9 @@ export interface V0EnvironmentPresentation {
    */
   readonly foodOccludedForCreature:
     boolean;
+
+  readonly sensoryOccluder:
+    V0SensoryOccluderPresentation;
 }
 
 export interface V0PresentationModel {
@@ -133,7 +165,7 @@ export interface V0PresentationModel {
 }
 
 /*
- * V0.1 PURE PRESENTATION BOUNDARY
+ * PURE PRESENTATION BOUNDARY
  *
  * authoritative simulation state
  *   ->
@@ -154,6 +186,12 @@ export interface V0PresentationModel {
  * The optional previous state exists only so
  * visible motion and facing can be derived
  * from actual authoritative displacement.
+ *
+ * The V0 sensory screen is copied from the
+ * pure habitat environment derivation for
+ * rendering only.
+ *
+ * The renderer does not calculate occlusion.
  */
 export function deriveV0PresentationModel(
   current:
@@ -206,6 +244,11 @@ export function deriveV0PresentationModel(
   const energyFraction =
     current.hunger.energy /
     current.hunger.maxEnergy;
+
+  const habitatEnvironment =
+    deriveV0HabitatEnvironment(
+      current,
+    );
 
   return {
     schemaVersion:
@@ -264,9 +307,39 @@ export function deriveV0PresentationModel(
     },
 
     environment: {
+      /*
+       * The authoritative episode field is
+       * displayed directly.
+       *
+       * Presentation does not recompute this
+       * value and cannot feed a result back
+       * into cognition.
+       */
       foodOccludedForCreature:
         current.foodOccluded ??
         false,
+
+      sensoryOccluder: {
+        active:
+          habitatEnvironment
+            .sensoryOccluder
+            .active,
+
+        x:
+          habitatEnvironment
+            .sensoryOccluder
+            .x,
+
+        minY:
+          habitatEnvironment
+            .sensoryOccluder
+            .minY,
+
+        maxY:
+          habitatEnvironment
+            .sensoryOccluder
+            .maxY,
+      },
     },
   };
 }

@@ -1,6 +1,9 @@
 import {
-  advanceM1Episode,
-  type M1EpisodeState,
+  advanceV0Habitat,
+} from "../simulation/core/v0Habitat.js";
+
+import type {
+  M1EpisodeState,
 } from "../simulation/core/m1Episode.js";
 
 /*
@@ -8,7 +11,7 @@ import {
  *
  * This value determines when the application
  * requests another complete authoritative
- * simulation tick while Play is active.
+ * V0 habitat tick while Play is active.
  *
  * It is never supplied to cognition as a
  * variable delta.
@@ -54,15 +57,22 @@ export interface V0ControllerCallbacks {
 }
 
 /*
- * V0.3 FIXED-STEP APPLICATION CONTROLLER
+ * V0 FIXED-STEP APPLICATION CONTROLLER
  *
  * UI intent
  *   ->
  * controller
  *   ->
+ * advanceV0Habitat(...)
+ *   ->
+ * environmental input synchronization
+ *   ->
  * accepted advanceM1Episode(...)
  *   ->
  * new authoritative simulation state
+ *
+ * The habitat transition is still exactly one
+ * authoritative Creature simulation tick.
  *
  * This controller cannot:
  *
@@ -70,7 +80,7 @@ export interface V0ControllerCallbacks {
  * - set neural activations;
  * - create or edit memory;
  * - move the Creature directly;
- * - supply food coordinates;
+ * - supply food coordinates to cognition;
  * - alter simulation tick duration.
  */
 export class V0ApplicationController {
@@ -115,7 +125,7 @@ export class V0ApplicationController {
 
   /*
    * Single-step means exactly one
-   * authoritative simulation transition.
+   * authoritative V0 habitat transition.
    *
    * Step is ignored while Play is active so
    * two browser control pathways cannot add
@@ -201,7 +211,7 @@ export class V0ApplicationController {
       this.state;
 
     const current =
-      advanceM1Episode(
+      advanceV0Habitat(
         previous,
       );
 

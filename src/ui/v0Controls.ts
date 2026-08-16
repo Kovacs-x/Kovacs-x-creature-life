@@ -21,7 +21,7 @@ export interface V0ControlView {
 }
 
 /*
- * V0.3 CONTROL PRESENTATION
+ * V0 CONTROL PRESENTATION
  *
  * These controls emit only application
  * execution intent:
@@ -63,11 +63,6 @@ export function mountV0Controls(
       "div",
     );
 
-  /*
-   * Reuse the responsive V0.2 card layout.
-   * No new CSS is required for the functional
-   * controller phase.
-   */
   controls.className =
     "v0-status-grid";
 
@@ -184,7 +179,7 @@ export function mountV0Controls(
     );
 
   phaseBadge.textContent =
-    "V0.3";
+    "V0.4";
 
   const footer =
     requireElement(
@@ -193,7 +188,7 @@ export function mountV0Controls(
     );
 
   footer.textContent =
-    "V0.3 controls request fixed authoritative simulation ticks. Browser timing does not supply cognition with a variable delta.";
+    "V0.4 derives sensory occlusion from authoritative habitat geometry. The sensory screen does not command Creature behaviour.";
 
   const view:
     V0ControlView = {

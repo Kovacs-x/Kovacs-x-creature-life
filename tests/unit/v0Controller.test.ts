@@ -5,10 +5,13 @@ import {
 } from "vitest";
 
 import {
-  advanceM1Episode,
   createM1EpisodeState,
   type M1EpisodeState,
 } from "../../src/simulation/core/m1Episode.js";
+
+import {
+  advanceV0Habitat,
+} from "../../src/simulation/core/v0Habitat.js";
 
 import {
   V0ApplicationController,
@@ -187,7 +190,7 @@ function createHarness():
 }
 
 describe(
-  "V0.3 fixed-step application controller",
+  "V0 fixed-step application controller",
   () => {
     it("starts paused without advancing simulation", () => {
       const {
@@ -221,7 +224,7 @@ describe(
       ).toHaveLength(0);
     });
 
-    it("single-step produces exactly the accepted one-tick simulation result", () => {
+    it("single-step produces exactly one authoritative V0 habitat tick", () => {
       const {
         initialState,
         scheduler,
@@ -231,7 +234,7 @@ describe(
         createHarness();
 
       const expected =
-        advanceM1Episode(
+        advanceV0Habitat(
           initialState,
         );
 
@@ -279,9 +282,22 @@ describe(
       ).toBe(
         "paused",
       );
+
+      /*
+       * After the legitimate first direct
+       * experience, the deterministic V0
+       * environment activates the sensory
+       * screen and the resulting state records
+       * food as occluded.
+       */
+      expect(
+        controller
+          .getState()
+          .foodOccluded,
+      ).toBe(true);
     });
 
-    it("Play uses wall clock only to request fixed authoritative ticks", () => {
+    it("Play uses wall clock only to request fixed authoritative habitat ticks", () => {
       const {
         initialState,
         scheduler,
@@ -319,7 +335,7 @@ describe(
       );
 
       const expectedFirst =
-        advanceM1Episode(
+        advanceV0Habitat(
           initialState,
         );
 
@@ -332,7 +348,7 @@ describe(
       );
 
       const expectedSecond =
-        advanceM1Episode(
+        advanceV0Habitat(
           expectedFirst,
         );
 
@@ -343,6 +359,12 @@ describe(
       ).toEqual(
         expectedSecond,
       );
+
+      expect(
+        controller
+          .getState()
+          .simulationTimeSeconds,
+      ).toBe(2);
     });
 
     it("Pause prevents later scheduler pulses from advancing simulation", () => {
