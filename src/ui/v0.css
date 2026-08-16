@@ -343,6 +343,79 @@ select {
     12px;
 }
 
+.v0-habitat-context {
+  position:
+    absolute;
+
+  top:
+    12px;
+
+  z-index:
+    4;
+
+  max-width:
+    calc(
+      50% - 18px
+    );
+
+  padding:
+    7px 10px;
+
+  border:
+    1px solid
+    rgba(
+      48,
+      62,
+      49,
+      0.18
+    );
+
+  border-radius:
+    999px;
+
+  background:
+    rgba(
+      248,
+      249,
+      242,
+      0.88
+    );
+
+  box-shadow:
+    0 4px 12px
+    rgba(
+      48,
+      62,
+      49,
+      0.08
+    );
+
+  font-size:
+    0.72rem;
+
+  font-weight:
+    800;
+
+  line-height:
+    1.25;
+
+  pointer-events:
+    none;
+}
+
+.v0-habitat-context--scenario {
+  left:
+    12px;
+}
+
+.v0-habitat-context--activity {
+  right:
+    12px;
+
+  text-align:
+    right;
+}
+
 .v0-creature,
 .v0-food {
   position:
@@ -410,6 +483,9 @@ select {
   inset:
     19%;
 
+  transform-origin:
+    center;
+
   border-radius:
     50%;
 
@@ -420,6 +496,48 @@ select {
       255,
       0.14
     );
+}
+
+/*
+ * Idle breathing is presentation-only.
+ *
+ * It changes no world position and therefore
+ * may continue while the simulation is
+ * paused.
+ */
+.v0-creature[data-activity="idle"]
+.v0-creature-core {
+  animation:
+    v0-idle-breathe
+    2.8s
+    ease-in-out
+    infinite;
+}
+
+/*
+ * Locomotion and eating cues run once when a
+ * new authoritative transition is rendered.
+ *
+ * They do not continue pretending the
+ * Creature is moving while simulation is
+ * paused.
+ */
+.v0-creature[data-activity="locomotion"]
+.v0-creature-core {
+  animation:
+    v0-locomotion-cue
+    360ms
+    ease-out
+    1;
+}
+
+.v0-creature[data-activity="eating"]
+.v0-creature-core {
+  animation:
+    v0-eating-cue
+    520ms
+    ease-in-out
+    1;
 }
 
 .v0-creature-facing-mark {
@@ -549,9 +667,9 @@ select {
 
   grid-template-columns:
     repeat(
-      4,
+      auto-fit,
       minmax(
-        0,
+        145px,
         1fr
       )
     );
@@ -634,7 +752,8 @@ select {
     #f2f5eb;
 }
 
-.v0-energy-heading {
+.v0-energy-heading,
+.v0-energy-context {
   display:
     flex;
 
@@ -644,14 +763,17 @@ select {
   gap:
     12px;
 
-  margin-bottom:
-    9px;
-
   font-size:
     0.84rem;
 }
 
-.v0-energy-heading strong {
+.v0-energy-heading {
+  margin-bottom:
+    9px;
+}
+
+.v0-energy-heading strong,
+.v0-energy-context strong {
   font-variant-numeric:
     tabular-nums;
 }
@@ -687,6 +809,14 @@ select {
     #638759;
 }
 
+.v0-energy-context {
+  margin-top:
+    8px;
+
+  color:
+    #687064;
+}
+
 .v0-footer {
   padding:
     16px 4px 0;
@@ -702,6 +832,80 @@ select {
 
   line-height:
     1.45;
+}
+
+@keyframes v0-idle-breathe {
+  0%,
+  100% {
+    transform:
+      scale(
+        0.96
+      );
+  }
+
+  50% {
+    transform:
+      scale(
+        1.04
+      );
+  }
+}
+
+@keyframes v0-locomotion-cue {
+  0% {
+    transform:
+      scale(
+        0.88
+      );
+  }
+
+  55% {
+    transform:
+      scale(
+        1.10
+      );
+  }
+
+  100% {
+    transform:
+      scale(
+        1
+      );
+  }
+}
+
+@keyframes v0-eating-cue {
+  0%,
+  100% {
+    transform:
+      scale(
+        1
+      );
+  }
+
+  35% {
+    transform:
+      scale(
+        1.18
+      );
+  }
+
+  70% {
+    transform:
+      scale(
+        0.90
+      );
+  }
+}
+
+@media (
+  prefers-reduced-motion:
+    reduce
+) {
+  .v0-creature-core {
+    animation:
+      none !important;
+  }
 }
 
 @media (
@@ -759,6 +963,32 @@ select {
         )
       );
   }
+
+  .v0-habitat-context {
+    top:
+      9px;
+
+    max-width:
+      calc(
+        58% - 12px
+      );
+
+    padding:
+      6px 8px;
+
+    font-size:
+      0.65rem;
+  }
+
+  .v0-habitat-context--scenario {
+    left:
+      9px;
+  }
+
+  .v0-habitat-context--activity {
+    right:
+      9px;
+  }
 }
 
 @media (
@@ -805,5 +1035,12 @@ select {
   .v0-status-value {
     text-align:
       right;
+  }
+
+  .v0-habitat-context {
+    max-width:
+      calc(
+        62% - 12px
+      );
   }
 }

@@ -14,6 +14,17 @@ export type V0CreatureMotionState =
   | "stationary"
   | "moving";
 
+export type V0CreatureActivityState =
+  | "idle"
+  | "locomotion"
+  | "eating";
+
+export type V0ScenarioContext =
+  | "direct-perception"
+  | "memory-challenge"
+  | "direct-perception-restored"
+  | "food-consumed";
+
 export interface V0PresentationVector {
   readonly x:
     number;
@@ -44,6 +55,26 @@ export interface V0CreaturePresentation {
 
   readonly distanceMoved:
     number;
+
+  /*
+   * Coarse visible activity derived only from
+   * genuine physical consequence:
+   *
+   * idle:
+   * no displacement and no eating event;
+   *
+   * locomotion:
+   * authoritative position changed;
+   *
+   * eating:
+   * physical food changed from available to
+   * consumed on this transition.
+   *
+   * No emotional or motivational state is
+   * invented here.
+   */
+  readonly activityState:
+    V0CreatureActivityState;
 
   /*
    * Unit direction of actual physical
@@ -142,6 +173,21 @@ export interface V0EnvironmentPresentation {
 
   readonly sensoryOccluder:
     V0SensoryOccluderPresentation;
+
+  /*
+   * This is scenario context, not a statement
+   * about which action the Creature selected.
+   *
+   * "memory-challenge" means direct food sight
+   * is currently blocked in the controlled V0
+   * memory scenario.
+   *
+   * It does not claim that memory caused the
+   * latest action. Causal attribution remains
+   * in Why / History telemetry.
+   */
+  readonly scenarioContext:
+    V0ScenarioContext;
 }
 
 export interface V0PresentationModel {
@@ -184,12 +230,8 @@ export interface V0PresentationModel {
  * - does not inspect wall-clock time.
  *
  * The optional previous state exists only so
- * visible motion and facing can be derived
- * from actual authoritative displacement.
- *
- * The V0 sensory screen is copied from the
- * pure habitat environment derivation for
- * rendering only.
+ * visible physical events can be derived from
+ * actual consecutive authoritative states.
  *
  * The renderer does not calculate occlusion.
  */
@@ -241,6 +283,20 @@ export function deriveV0PresentationModel(
             distanceMoved,
         };
 
+  const ateThisTick =
+    previous !== null &&
+    !previous.food.consumed &&
+    current.food.consumed &&
+    current.ate;
+
+  const activityState:
+    V0CreatureActivityState =
+      ateThisTick
+        ? "eating"
+        : distanceMoved > 0
+          ? "locomotion"
+          : "idle";
+
   const energyFraction =
     current.hunger.energy /
     current.hunger.maxEnergy;
@@ -248,6 +304,19 @@ export function deriveV0PresentationModel(
   const habitatEnvironment =
     deriveV0HabitatEnvironment(
       current,
+    );
+
+  const foodOccludedForCreature =
+    current.foodOccluded ??
+    false;
+
+  const scenarioContext =
+    deriveScenarioContext(
+      current,
+      habitatEnvironment
+        .sensoryOccluder
+        .active,
+      foodOccludedForCreature,
     );
 
   return {
@@ -274,6 +343,8 @@ export function deriveV0PresentationModel(
           : "stationary",
 
       distanceMoved,
+
+      activityState,
 
       facingDirection,
 
@@ -307,17 +378,7 @@ export function deriveV0PresentationModel(
     },
 
     environment: {
-      /*
-       * The authoritative episode field is
-       * displayed directly.
-       *
-       * Presentation does not recompute this
-       * value and cannot feed a result back
-       * into cognition.
-       */
-      foodOccludedForCreature:
-        current.foodOccluded ??
-        false,
+      foodOccludedForCreature,
 
       sensoryOccluder: {
         active:
@@ -340,8 +401,41 @@ export function deriveV0PresentationModel(
             .sensoryOccluder
             .maxY,
       },
+
+      scenarioContext,
     },
   };
+}
+
+function deriveScenarioContext(
+  current:
+    M1EpisodeState,
+
+  sensoryScreenActive:
+    boolean,
+
+  foodOccludedForCreature:
+    boolean,
+): V0ScenarioContext {
+  if (
+    current.food.consumed
+  ) {
+    return "food-consumed";
+  }
+
+  if (
+    foodOccludedForCreature
+  ) {
+    return "memory-challenge";
+  }
+
+  if (
+    sensoryScreenActive
+  ) {
+    return "direct-perception-restored";
+  }
+
+  return "direct-perception";
 }
 
 function deriveAuthoritativeDisplacement(

@@ -1,5 +1,6 @@
 import type {
   V0PresentationModel,
+  V0ScenarioContext,
 } from "../rendering/v0Presentation.js";
 
 /*
@@ -77,8 +78,8 @@ export function worldCoordinateToViewportPercent(
  * - move the authoritative Creature;
  * - determine whether food is perceptible.
  *
- * Its only responsibility is to display
- * presentation data.
+ * V0.6 adds only legibility cues derived from
+ * genuine presentation facts.
  */
 export function mountV0Habitat(
   root:
@@ -109,7 +110,7 @@ export function mountV0Habitat(
           class="v0-phase-badge"
           aria-label="Current development phase"
         >
-          V0.4
+          V0.6
         </div>
       </header>
 
@@ -138,10 +139,27 @@ export function mountV0Habitat(
           class="v0-habitat"
           role="img"
           aria-label="Creature Life prototype habitat"
+          data-v0-scenario-context
         >
           <div
             class="v0-world-grid"
             aria-hidden="true"
+          ></div>
+
+          <div
+            class="
+              v0-habitat-context
+              v0-habitat-context--scenario
+            "
+            data-v0-scenario-label
+          ></div>
+
+          <div
+            class="
+              v0-habitat-context
+              v0-habitat-context--activity
+            "
+            data-v0-activity-label
           ></div>
 
           <div
@@ -165,6 +183,7 @@ export function mountV0Habitat(
             data-v0-creature
             data-facing="unknown"
             data-motion="stationary"
+            data-activity="idle"
             aria-label="Creature-1"
           >
             <span
@@ -180,9 +199,9 @@ export function mountV0Habitat(
         </div>
 
         <p class="v0-habitat-note">
-          The translucent sensory screen affects
-          sight only. It is deliberately non-solid
-          and does not block Creature movement.
+          Activity cues represent genuine physical
+          state changes. The sensory screen affects
+          sight only and remains non-solid.
         </p>
       </section>
 
@@ -205,12 +224,23 @@ export function mountV0Habitat(
         <div class="v0-status-grid">
           <article class="v0-status-card">
             <span class="v0-status-key">
-              Motion
+              Activity
             </span>
 
             <strong
               class="v0-status-value"
-              data-v0-motion
+              data-v0-activity
+            ></strong>
+          </article>
+
+          <article class="v0-status-card">
+            <span class="v0-status-key">
+              Scenario context
+            </span>
+
+            <strong
+              class="v0-status-value"
+              data-v0-context
             ></strong>
           </article>
 
@@ -272,15 +302,36 @@ export function mountV0Habitat(
               data-v0-energy-fill
             ></div>
           </div>
+
+          <div class="v0-energy-context">
+            <span>
+              Hunger load
+            </span>
+
+            <strong
+              data-v0-hunger-label
+            ></strong>
+          </div>
         </div>
       </section>
 
       <footer class="v0-footer">
-        V0.4 derives sensory occlusion from
-        authoritative habitat geometry.
+        V0.6 adds presentation-only cues for genuine
+        activity, hunger and scenario context.
       </footer>
     </main>
   `;
+
+  const habitat =
+    requireElement(
+      root,
+      ".v0-habitat",
+    );
+
+  habitat.dataset
+    .v0ScenarioContext =
+    model.environment
+      .scenarioContext;
 
   const creature =
     requireElement(
@@ -321,6 +372,10 @@ export function mountV0Habitat(
   creature.dataset.motion =
     model.creature.motionState;
 
+  creature.dataset.activity =
+    model.creature
+      .activityState;
+
   const facing =
     model.creature.facingDirection;
 
@@ -340,8 +395,7 @@ export function mountV0Habitat(
      * the habitat uses CSS bottom positioning.
      *
      * CSS rotation uses the opposite visible
-     * sign for this coordinate convention,
-     * hence the negative mathematical angle.
+     * sign for this coordinate convention.
      */
     const facingAngle =
       -Math.atan2(
@@ -365,7 +419,10 @@ export function mountV0Habitat(
       `y ${formatNumber(
         model.creature.position.y,
       )}`,
-      model.creature.motionState,
+      formatActivityState(
+        model.creature
+          .activityState,
+      ),
     ].join(", "),
   );
 
@@ -387,6 +444,26 @@ export function mountV0Habitat(
       : "Food consumed",
   );
 
+  const activityLabel =
+    formatActivityState(
+      model.creature
+        .activityState,
+    );
+
+  const contextLabel =
+    formatScenarioContext(
+      model.environment
+        .scenarioContext,
+    );
+
+  const foodVisibilityLabel =
+    !model.food.available
+      ? "No food available"
+      : model.environment
+          .foodOccludedForCreature
+        ? "Occluded from Creature"
+        : "Visible to Creature";
+
   setText(
     root,
     "[data-v0-tick]",
@@ -395,11 +472,26 @@ export function mountV0Habitat(
 
   setText(
     root,
-    "[data-v0-motion]",
-    model.creature.motionState ===
-      "moving"
-      ? "Moving"
-      : "Stationary",
+    "[data-v0-activity-label]",
+    activityLabel,
+  );
+
+  setText(
+    root,
+    "[data-v0-scenario-label]",
+    contextLabel,
+  );
+
+  setText(
+    root,
+    "[data-v0-activity]",
+    activityLabel,
+  );
+
+  setText(
+    root,
+    "[data-v0-context]",
+    contextLabel,
   );
 
   setText(
@@ -413,10 +505,7 @@ export function mountV0Habitat(
   setText(
     root,
     "[data-v0-visibility]",
-    model.environment
-      .foodOccludedForCreature
-      ? "Occluded from Creature"
-      : "Visible to Creature",
+    foodVisibilityLabel,
   );
 
   setText(
@@ -444,6 +533,22 @@ export function mountV0Habitat(
       1,
     ) *
     100;
+
+  const hungerPercent =
+    clamp(
+      model.creature.hungerFraction,
+      0,
+      1,
+    ) *
+    100;
+
+  setText(
+    root,
+    "[data-v0-hunger-label]",
+    `${hungerPercent.toFixed(
+      0,
+    )}%`,
+  );
 
   const energyFill =
     requireElement(
@@ -563,6 +668,43 @@ function configureSensoryScreen(
       "aria-label",
       "Inactive non-solid sensory screen",
     );
+  }
+}
+
+function formatActivityState(
+  activity:
+    V0PresentationModel[
+      "creature"
+    ]["activityState"],
+): string {
+  switch (activity) {
+    case "idle":
+      return "Idle";
+
+    case "locomotion":
+      return "Locomotion";
+
+    case "eating":
+      return "Eating";
+  }
+}
+
+function formatScenarioContext(
+  context:
+    V0ScenarioContext,
+): string {
+  switch (context) {
+    case "direct-perception":
+      return "Direct sight";
+
+    case "memory-challenge":
+      return "Memory challenge · sight blocked";
+
+    case "direct-perception-restored":
+      return "Direct sight restored";
+
+    case "food-consumed":
+      return "Food consumed";
   }
 }
 

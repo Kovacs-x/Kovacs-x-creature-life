@@ -179,7 +179,7 @@ export function mountV0Controls(
     );
 
   phaseBadge.textContent =
-    "V0.5";
+    "V0.6";
 
   const footer =
     requireElement(
@@ -188,7 +188,7 @@ export function mountV0Controls(
     );
 
   footer.textContent =
-    "V0.5 exposes bounded recorded causal history for developer inspection. Diagnostic history never feeds back into Creature cognition.";
+    "V0.6 adds presentation-only cues for genuine activity, hunger and scenario context. No visual cue commands Creature cognition.";
 
   const view:
     V0ControlView = {
