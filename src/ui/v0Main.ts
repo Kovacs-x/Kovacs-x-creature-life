@@ -20,26 +20,44 @@ import {
 } from "./v0Controls.js";
 
 import {
+  appendV0CausalHistory,
+  createV0CausalHistory,
+  type V0CausalHistory,
+} from "./v0History.js";
+
+import {
+  mountV0Inspector,
+} from "./v0Inspector.js";
+
+import {
   mountV0Habitat,
 } from "./v0Habitat.js";
 
 /*
- * V0.3 APPLICATION BOOTSTRAP
+ * V0.5 APPLICATION BOOTSTRAP
  *
  * Browser control intent
  *   ->
  * V0ApplicationController
  *   ->
- * accepted advanceM1Episode(...)
+ * authoritative V0 habitat transition
  *   ->
- * authoritative simulation state
+ * new authoritative simulation state
  *   ->
- * V0PresentationModel
+ * presentation model
  *   ->
  * browser presentation
  *
- * Neither the controls nor the renderer can
- * select a Creature action directly.
+ * Separately:
+ *
+ * completed authoritative transition
+ *   ->
+ * bounded diagnostic history
+ *   ->
+ * Why / History inspector
+ *
+ * Diagnostic history never flows back into
+ * Creature cognition.
  */
 
 const root =
@@ -66,22 +84,28 @@ let controlView:
   V0ControlView | null =
     null;
 
+/*
+ * Presentation/debug state only.
+ *
+ * This collection is deliberately separate
+ * from M1EpisodeState and FoodMemoryTrace.
+ */
+let history:
+  V0CausalHistory =
+    createV0CausalHistory();
+
 let controller:
   V0ApplicationController;
 
 /*
- * The current habitat is deliberately small.
+ * The current habitat remains rebuilt from
+ * authoritative simulation state.
  *
- * On every authoritative transition, the
- * browser is rebuilt from the new
- * presentation model.
+ * The inspector is then mounted from bounded
+ * diagnostic history.
  *
- * This avoids creating another mutable world
- * representation inside the browser.
- *
- * Later visual interpolation may maintain
- * transient presentation state, but must
- * never become simulation truth.
+ * Neither representation becomes simulation
+ * truth.
  */
 function renderState(
   current:
@@ -122,6 +146,11 @@ function renderState(
   controlView.setMode(
     controller.getMode(),
   );
+
+  mountV0Inspector(
+    root,
+    history,
+  );
 }
 
 controller =
@@ -135,6 +164,21 @@ controller =
         previous,
         current,
       ) => {
+        /*
+         * Record only after the authoritative
+         * transition has completed.
+         *
+         * appendV0CausalHistory is a pure
+         * observer and cannot alter either
+         * episode state.
+         */
+        history =
+          appendV0CausalHistory(
+            history,
+            previous,
+            current,
+          );
+
         renderState(
           current,
           previous,
@@ -163,7 +207,10 @@ function requireV0BrowserRoot():
       "#app",
     );
 
-  if (element === null) {
+  if (
+    element ===
+    null
+  ) {
     throw new Error(
       "V0 browser root #app was not found.",
     );

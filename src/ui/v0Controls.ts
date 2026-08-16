@@ -179,7 +179,7 @@ export function mountV0Controls(
     );
 
   phaseBadge.textContent =
-    "V0.4";
+    "V0.5";
 
   const footer =
     requireElement(
@@ -188,7 +188,7 @@ export function mountV0Controls(
     );
 
   footer.textContent =
-    "V0.4 derives sensory occlusion from authoritative habitat geometry. The sensory screen does not command Creature behaviour.";
+    "V0.5 exposes bounded recorded causal history for developer inspection. Diagnostic history never feeds back into Creature cognition.";
 
   const view:
     V0ControlView = {
@@ -254,7 +254,10 @@ function requireButton(
       selector,
     );
 
-  if (button === null) {
+  if (
+    button ===
+    null
+  ) {
     throw new Error(
       `V0 controls could not find ${selector}.`,
     );
@@ -275,7 +278,10 @@ function requireElement(
       selector,
     );
 
-  if (element === null) {
+  if (
+    element ===
+    null
+  ) {
     throw new Error(
       `V0 controls could not find ${selector}.`,
     );
