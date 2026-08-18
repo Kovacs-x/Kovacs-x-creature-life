@@ -1,9 +1,9 @@
 # Creature Life — Project State
 
 **Repository:** Kovacs-x/Kovacs-x-creature-life  
-**Current milestone:** None — post-V0 decision phase  
+**Current milestone:** M3 — First Autonomous Experience-Shaped Creature  
 **Last accepted milestone:** V0 — Creature Embodiment Vertical Slice  
-**Current phase:** Post-V0 evidence review and next-milestone selection
+**Current phase:** M3.1 — Pure Exploration Mechanism preparation
 
 ---
 
@@ -238,6 +238,48 @@ M2 is therefore accepted within its deliberately narrow claim:
 This does not establish sophisticated episodic memory, planning, semantic memory or general-purpose navigation.
 
 M2 is now the accepted persistent-memory organism baseline.
+
+### M3 — First Autonomous Experience-Shaped Creature
+
+Status: prospectively accepted on 2026-08-18 and currently active.
+
+Authoritative specification:
+
+`docs/M3_SPEC.md`
+
+Implementation has not yet begun.
+
+M3 was selected from the evidence produced by V0 rather than from a predetermined cognitive milestone sequence.
+
+V0 showed that the Creature's behaviour was genuine and understandable but still felt:
+
+- too deterministic;
+- too repetitive;
+- weakly autonomous;
+- highly replaceable;
+- insufficiently shaped by visible individual history.
+
+M3 therefore asks:
+
+**Can an embodied Creature autonomously explore through seeded stochastic behaviour, encounter different legitimate experiences, and carry consequences of those experiences forward so that its later behaviour becomes meaningfully shaped by its own history?**
+
+The central M3 causal claim is:
+
+different legitimate experience histories  
+→ different persistent internal state  
+→ same later controlled situation  
+→ different behaviour
+
+M3 must not be accepted merely because:
+
+- the Creature moves unpredictably;
+- different RNG seeds produce different paths;
+- the Creature appears more lively;
+- presentation creates the impression of individuality.
+
+M3 requires evidence that legitimate differences in lived experience create persistent internal differences that later alter behaviour under controlled equivalent conditions.
+
+M3 remains active until its specification, controls, adversarial tests, persistence evidence, telemetry, human evaluation and formal audit are completed and the user explicitly accepts the milestone.
 
 ---
 
@@ -871,9 +913,18 @@ Future variation must arise from legitimate simulation mechanisms and use seeded
 
 V0 therefore succeeded as an embodiment experiment while revealing that causal correctness and legibility alone are not sufficient to create perceived agency, attachment or meaningful individuality.
 
-The next formal milestone is intentionally not selected yet.
+At V0 acceptance, the next formal milestone was intentionally left unselected.
 
-It must be chosen from the V0 evidence rather than automatically continuing a predetermined sequence of headless cognitive milestones.
+It was to be chosen from the V0 evidence rather than automatically continuing a predetermined sequence of headless cognitive milestones.
+
+The subsequent post-V0 evidence review selected M3 — First Autonomous Experience-Shaped Creature.
+
+M3 was chosen specifically to address:
+
+- deterministic and repetitive visible behaviour;
+- weak perceived agency;
+- high individual replaceability;
+- insufficient opportunity for accumulated experience to make one Creature's future differ from another's.
 
 ---
 
@@ -957,6 +1008,8 @@ Do not build increasingly complex brains in an empty box.
 
 Do not build increasingly complex physics that the Creature has no mechanism to use.
 
+M3 follows this principle by pairing a new autonomous exploration mechanism with only the minimum additional environmental opportunity needed for that exploration to have legitimate consequences.
+
 ---
 
 ## 17. V0 Evaluation Criteria
@@ -1033,6 +1086,16 @@ perception
 → occlusion  
 → memory  
 → remembered searching
+
+M3 adds a further legitimate candidate sequence:
+
+internal exploration pressure  
+→ EXPLORE competition  
+→ autonomous movement  
+→ legitimate discovery  
+→ normal perception  
+→ consequence  
+→ learning
 
 The scenario may be deliberately designed for clarity.
 
@@ -1129,6 +1192,15 @@ Explanations must come from recorded causal evidence.
 
 They must not be invented after the fact.
 
+M3 should extend causal inspection so it can also answer:
+
+- what was the Creature's exploration pressure?
+- did EXPLORE actually compete and win?
+- was a new exploratory heading sampled?
+- did exploration produce the discovery?
+- did that experience generate reward or learning?
+- did accumulated experience later change behaviour?
+
 ---
 
 ## 22. Bounded Telemetry Export
@@ -1199,6 +1271,12 @@ Important history should eventually be selected, compressed and made inspectable
 
 The purpose is to allow the biography of an individual to become meaningful rather than merely accumulating logs.
 
+M3 introduces the first deliberately bounded player-facing life-history mechanism.
+
+M3 life history must remain separate from cognitive memory.
+
+Entries must derive from genuine causal events and must not feed back into Creature cognition merely because they are recorded or displayed.
+
 ---
 
 ## 24. Experience Replay — Future Requirement
@@ -1220,9 +1298,11 @@ External events may eventually include:
 - environmental event occurred;
 - player interaction occurred.
 
-This is not a V0 prerequisite unless embodiment work demonstrates a concrete need for it.
+This was not a V0 prerequisite.
 
-It becomes more important as persistent interactive experiences grow longer and harder to reproduce.
+M3 introduces a narrower precursor by requiring relevant player-generated world events to be recorded in deterministic order where necessary for causal inspection and reproducibility.
+
+A general long-term experience replay system remains a future requirement.
 
 ---
 
@@ -1257,7 +1337,9 @@ Do not implement them merely because they are theoretically plausible.
 
 ## 26. Important Future Cognitive Questions
 
-After V0, choose the next cognitive milestone partly based on what embodiment reveals is missing.
+M3 was selected from the evidence produced by embodiment.
+
+Future milestones should continue to be chosen partly from evidence produced by the embodied Creature rather than locking a long cognitive sequence prematurely.
 
 Important future areas include:
 
@@ -1390,41 +1472,282 @@ Evaluate:
 
 Commercial strategy should follow evidence from the playable Creature.
 
+The V0 review showed that causal legibility was already substantially successful but agency, attachment and individuality remained weak.
+
+M3 is therefore part of the evidence-gathering path required before a much larger production commitment.
+
 ---
 
-## 30. Current Immediate Sequence
+## 30. Current Active Milestone — M3
 
-V0 was formally accepted on 2026-08-18.
+M3 — First Autonomous Experience-Shaped Creature — was prospectively accepted on 2026-08-18.
 
-Current work is:
+Authoritative specification:
 
-accepted V0 baseline  
-→ authoritative V0 acceptance record  
-→ clean GitHub / CI baseline  
-→ post-V0 evidence review  
-→ choose next formal milestone  
-→ write its prospective specification  
-→ implementation only after the specification is locked
+`docs/M3_SPEC.md`
 
-The post-V0 review must begin from the evidence actually produced by embodiment.
+M3 was selected after comparing plausible post-V0 directions including:
 
-Primary findings to investigate:
+- seeded behavioural exploration;
+- richer environmental choices and consequences;
+- persistent biography;
+- richer drives;
+- improved embodiment;
+- primitive player teaching.
 
-- behaviour is causally genuine but currently feels too deterministic and repetitive;
-- the Creature currently shows weak perceived agency;
-- attachment has not yet emerged;
-- the individual currently feels highly replaceable;
-- the abstract circular embodiment contributes to weak creature identity;
-- genuine behavioural divergence and accumulated history appear more important than additional explanation tooling;
-- environmental opportunity and cognitive capability should continue to co-develop.
+The selected direction was chosen because it offered the strongest small next step combining:
 
-Do not solve these findings by adding fake autonomous behaviour, unsupported emotions or presentation-only personality.
+- genuine artificial-life emergence;
+- visible player value;
+- increased perceived agency;
+- increased surprise and curiosity;
+- accumulated individual history;
+- progress toward meaningful individuality and attachment.
 
-Possible future mechanisms may include seeded behavioural variation, richer environmental choice, persistent consequences, richer individual history or improved creature embodiment.
+M3 deliberately does not attempt to implement all of those candidate systems.
 
-These are candidates, not yet accepted requirements.
+The central mechanism is primitive homeostatic exploration pressure entering ordinary neural action competition.
 
-The next milestone must define a falsifiable mechanism and acceptance experiment before implementation begins.
+Required high-level route:
+
+internal exploration pressure  
+→ weighted EXPLORE activation  
+→ normal action competition  
+→ EXPLORE selected  
+→ seeded target-independent exploratory motor choice  
+→ physical movement  
+→ legitimate sensory discovery opportunity  
+→ existing cognition / memory / action  
+→ biological consequence  
+→ reward  
+→ neural learning  
+→ persistent experience-shaped state  
+→ changed later behaviour
+
+The strongest M3 claim is not:
+
+different seeds  
+→ different movement paths
+
+The required claim is:
+
+different legitimate experience histories  
+→ different persistent internal state  
+→ same later controlled situation  
+→ different behaviour
+
+This distinction is central.
+
+Random variation alone is not individuality.
+
+### M3 exploration boundary
+
+M3 introduces a primitive homeostatic exploration pressure.
+
+It does not introduce:
+
+- sensory novelty calculation;
+- unexplored-area knowledge;
+- curiosity maps;
+- hidden resource search;
+- general probabilistic action selection.
+
+Exploration direction must be target-independent.
+
+Hidden food position must not influence an exploratory heading before legitimate perception occurs.
+
+Exploration must be allowed to fail.
+
+### M3 stochasticity boundary
+
+M3 does not make all action selection probabilistic.
+
+Normal action competition remains the cognitive selector.
+
+Seeded stochasticity is introduced narrowly after EXPLORE wins, to determine the physical expression of an already-selected exploratory action.
+
+All simulation stochasticity must remain seeded, serializable and reproducible.
+
+Rendering and diagnostics must not consume authoritative simulation RNG.
+
+### M3 experience-shaped individuality standard
+
+M3 must prospectively lock a two-phase experiment.
+
+Phase A:
+
+equivalent starting Creatures  
++ different locked exploration RNG seeds  
+→ different legitimate experience histories
+
+The histories must produce a relevant persistent internal difference, preferably learned neural connection weights.
+
+Phase B:
+
+the branches are placed into a standardized controlled probe.
+
+Current conditions and immediate stochastic effects are normalized.
+
+The persistent experience-shaped learned state remains different.
+
+M3 succeeds centrally only if that historical difference then changes neural activation and/or behaviour.
+
+### M3 required adversarial evidence
+
+M3 includes:
+
+- exploration-disabled control;
+- learning-disabled control;
+- same-seed deterministic replay;
+- different-seed behavioural variation;
+- hidden-target adversarial test;
+- experience-state swap adversarial test;
+- save/reload continuation;
+- RNG-isolation evidence;
+- causal telemetry.
+
+The experience-state swap should demonstrate that later behavioural difference follows transferred learned state rather than Creature identity.
+
+### M3 player interaction
+
+M3 introduces one deliberately narrow player-to-world interaction:
+
+**food placement or relocation.**
+
+Required route:
+
+player changes authoritative world state  
+→ normal sensory transformation  
+→ Creature may perceive, fail to perceive, remember or discover  
+→ ordinary cognition and action
+
+The interaction must never directly issue:
+
+- SEEK;
+- EXPLORE;
+- movement;
+- food coordinates;
+- remembered direction.
+
+The player changes circumstances.
+
+The Creature determines its response.
+
+### M3 life history
+
+M3 introduces a small persistent life-history presentation derived from genuine events.
+
+It remains distinct from M2 cognitive memory.
+
+Potential entries include:
+
+- first autonomous exploration;
+- first independently discovered food;
+- food reached after autonomous discovery;
+- significant validated learning;
+- discovery of a player-relocated resource.
+
+Biography must not feed back into cognition.
+
+### M3 embodiment
+
+M3 also includes a presentation pass intended to make the visible organism read less like an abstract test token.
+
+The presentation may become more creature-like through:
+
+- recognizable body mass;
+- face/front region;
+- eyes;
+- tail, crest or appendage;
+- natural idle motion;
+- breathing/blinking;
+- locomotion;
+- genuine eating animation.
+
+Presentation is not evidence for the M3 cognitive claim.
+
+It must remain downstream of authoritative simulation state.
+
+### M3 human evaluation
+
+After mechanistic acceptance evidence is established, conduct a diagnostics-hidden human evaluation.
+
+Compare against V0 on:
+
+- agency;
+- surprise;
+- curiosity;
+- interaction desire;
+- individuality;
+- attachment;
+- replaceability;
+- legibility.
+
+M3 does not require strong attachment.
+
+However, if the mechanism passes technically but produces no directional improvement in agency, curiosity or meaningful individuality, another design review is required before M3 is treated as sufficient game-design progress.
+
+### M3 prospective locking rule
+
+Before the integrated behavioural result is evaluated, M3 must lock:
+
+- exploration-pressure constants;
+- exploration neural weight;
+- seeded heading-generation rules;
+- heading persistence;
+- boundary behaviour;
+- environment geometry;
+- primary acquisition seed pair or seed set;
+- experience-phase stopping rule;
+- autonomous-discovery metric;
+- standardized probe;
+- normalization procedure;
+- primary metrics;
+- controls;
+- adversarial tests.
+
+Do not quietly change these after observing results merely to obtain a pass.
+
+### M3 implementation sequence
+
+Current sequence:
+
+M3 prospective specification accepted  
+→ add M3 specification and authoritative project-state update  
+→ validate clean documentation baseline  
+→ commit / push / verify CI  
+→ M3.1 Pure Exploration Mechanism  
+→ M3.2 prospectively lock behavioural contract  
+→ M3.3 neural EXPLORE integration  
+→ M3.4 autonomous exploratory movement  
+→ M3.5 environmental discovery  
+→ M3.6 experience-acquisition experiment  
+→ M3.7 standardized individuality probe  
+→ M3.8 player world interaction  
+→ M3.9 creature presentation and life history  
+→ M3.10 determinism, persistence and telemetry  
+→ M3.11 behavioural and human evaluation  
+→ M3.12 independent adversarial review and formal audit  
+→ explicit user acceptance
+
+Do not begin M3.3 before the M3.2 behavioural contract is prospectively locked.
+
+Current immediate engineering task after the documentation baseline is committed and CI-verified:
+
+**M3.1 — Pure Exploration Mechanism**
+
+M3.1 should establish only:
+
+- exploration-pressure state;
+- deterministic simulation-time accumulation;
+- deterministic reduction;
+- bounded pressure;
+- serialization;
+- seeded heading-generation primitive;
+- heading persistence where needed;
+- same-seed deterministic replay.
+
+M3.1 must not yet connect exploration to Creature behaviour.
 
 ---
 
