@@ -1,9 +1,9 @@
 # Creature Life — Project State
 
 **Repository:** Kovacs-x/Kovacs-x-creature-life  
-**Current milestone:** V0 — Creature Embodiment Vertical Slice  
-**Last accepted milestone:** M2 — First Persistent Memory-Guided Creature  
-**Current phase:** V0 specification and embodiment planning
+**Current milestone:** None — post-V0 decision phase  
+**Last accepted milestone:** V0 — Creature Embodiment Vertical Slice  
+**Current phase:** Post-V0 evidence review and next-milestone selection
 
 ---
 
@@ -765,40 +765,115 @@ mechanism
 
 ---
 
-## 14. Current Phase — V0 Embodiment
+## 14. Accepted Milestone — V0 Creature Embodiment Vertical Slice
 
-With M2 formally accepted, Creature Life will not automatically continue through many additional headless cognitive milestones.
+Status: formally accepted on 2026-08-18.
 
-The current formal phase is:
+V0 asked:
 
-**V0 — Creature Embodiment Vertical Slice**
+**Can the accepted Creature become visible, understandable and worth observing without presentation replacing or falsifying its underlying simulation?**
 
-V0 moves the accepted organism into a minimal visible and interactive habitat.
-
-V0 should prioritise:
-
-- legibility;
-- agency;
-- attachment;
-- causal fidelity;
-- useful interaction;
-
-rather than production-quality graphics.
-
-Simulation remains authoritative.
-
-Required direction:
+V0 established the presentation architecture:
 
 simulation state  
-→ presentation  
-→ animation
+→ presentation model  
+→ rendering / animation / UI
 
-Never:
+with no reverse cognitive dependency.
 
-animation or UI  
-→ hidden cognitive decision
+The accepted implementation includes:
 
-V0 must begin with a specification and acceptance criteria before implementation is judged successful.
+- one visible Creature;
+- one food object;
+- visible habitat bounds;
+- a genuine simulation-side sensory occluder;
+- deterministic fixed-step Play, Pause and Step controls;
+- safe scenario Reset;
+- presentation derived from authoritative state;
+- locomotion orientation derived from actual displacement;
+- state-derived idle, locomotion and eating presentation;
+- biological energy and hunger presentation;
+- direct-perception and memory-challenge scenario context;
+- a bounded developer Why / History inspector;
+- deterministic human-readable causal explanations;
+- bounded JSON causal-trace export;
+- browser and phone-sized presentation.
+
+The sensory occluder is causal rather than decorative.
+
+Creature position  
++ food position  
++ sensory-screen geometry  
+→ simulation-side visibility  
+→ existing food perception  
+→ cognition
+
+The renderer does not decide whether food is perceptible.
+
+The controlled embodied sequence demonstrated:
+
+direct food perception  
+→ legitimate memory encoding  
+→ environmental occlusion  
+→ direct perception absent  
+→ usable recall  
+→ remembered-food neural activation  
+→ normal SEEK competition  
+→ remembered-direction movement  
+→ direct perception restored  
+→ legitimate eating and reward
+
+Why / History telemetry agreed with the visible behaviour.
+
+The browser controller does not directly command SEEK, MOVE or EAT.
+
+Reset restores a fresh predefined authoritative scenario and clears browser diagnostic history without executing a Creature simulation tick.
+
+The formal V0 audit found AC1 through AC15 satisfied.
+
+No prohibited V0 presentation/cognition shortcut was found.
+
+### V0 human evaluation
+
+The first human evaluation was conducted with Why / History initially hidden.
+
+Findings:
+
+**Legibility:** successful.
+
+The visible sequence was understandable and was not reported as misleading or unclear.
+
+**Agency:** weak.
+
+Although behaviour was genuinely produced by the simulation, the short deterministic sequence felt like a scripted demonstration because repeated runs produced the same visible outcome.
+
+**Attachment:** absent at this stage.
+
+Creature-1 still felt primarily like an anonymous test object rather than an individual the observer wanted to preserve or continue following.
+
+**Individual replaceability:** high.
+
+Replacing Creature-1 with an otherwise equivalent fresh Creature would not currently feel like a meaningful loss.
+
+**Primary design signal:**
+
+The embodied Creature needs greater opportunity for genuine behavioural divergence and accumulated individual history, and its visible embodiment should become more creature-like.
+
+This does not justify:
+
+- random cosmetic surprises;
+- scripted personality;
+- fabricated emotions;
+- canned autonomous-looking actions;
+- arbitrary stochastic behaviour added solely to appear alive.
+
+Future variation must arise from legitimate simulation mechanisms and use seeded randomness where stochasticity is introduced.
+
+V0 therefore succeeded as an embodiment experiment while revealing that causal correctness and legibility alone are not sufficient to create perceived agency, attachment or meaningful individuality.
+
+The next formal milestone is intentionally not selected yet.
+
+It must be chosen from the V0 evidence rather than automatically continuing a predetermined sequence of headless cognitive milestones.
 
 ---
 
@@ -1319,35 +1394,37 @@ Commercial strategy should follow evidence from the playable Creature.
 
 ## 30. Current Immediate Sequence
 
+V0 was formally accepted on 2026-08-18.
+
 Current work is:
 
-accepted M2 baseline  
-→ authoritative M2 acceptance record  
-→ GitHub CI  
-→ V0 specification  
-→ minimal Creature Embodiment vertical slice
+accepted V0 baseline  
+→ authoritative V0 acceptance record  
+→ clean GitHub / CI baseline  
+→ post-V0 evidence review  
+→ choose next formal milestone  
+→ write its prospective specification  
+→ implementation only after the specification is locked
 
-Exact sequence:
+The post-V0 review must begin from the evidence actually produced by embodiment.
 
-1. save this file as docs/PROJECT_STATE.md;
-2. run npm run typecheck;
-3. run npm test;
-4. commit and push the PROJECT_STATE.md acceptance update;
-5. verify the exact GitHub commit and successful CI;
-6. begin V0 by writing a narrow V0 specification and acceptance criteria before implementation;
-7. inspect the accepted state → one simulation tick → new state path and existing presentation placeholders;
-8. decide the smallest technical presentation architecture needed for the vertical slice;
-9. implement one visible Creature, food, habitat boundaries and one static occluder without moving cognition into the UI;
-10. expose accepted biological, perceptual, neural and memory state through presentation;
-11. begin a developer Why/History view from causal telemetry;
-12. evaluate the slice for legibility, agency, attachment and individual replaceability;
-13. use embodiment evidence to decide what cognitive or environmental capability should come next.
+Primary findings to investigate:
 
-Do not automatically start another long sequence of headless cognitive milestones after M2.
+- behaviour is causally genuine but currently feels too deterministic and repetitive;
+- the Creature currently shows weak perceived agency;
+- attachment has not yet emerged;
+- the individual currently feels highly replaceable;
+- the abstract circular embodiment contributes to weak creature identity;
+- genuine behavioural divergence and accumulated history appear more important than additional explanation tooling;
+- environmental opportunity and cognitive capability should continue to co-develop.
 
-Do not add advanced interaction mechanics merely to make V0 appear more game-like.
+Do not solve these findings by adding fake autonomous behaviour, unsupported emotions or presentation-only personality.
 
-V0 exists to determine whether the accepted organism becomes understandable and compelling when embodied.
+Possible future mechanisms may include seeded behavioural variation, richer environmental choice, persistent consequences, richer individual history or improved creature embodiment.
+
+These are candidates, not yet accepted requirements.
+
+The next milestone must define a falsifiable mechanism and acceptance experiment before implementation begins.
 
 ---
 
