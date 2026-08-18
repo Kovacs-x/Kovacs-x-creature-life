@@ -34,7 +34,7 @@ import {
 } from "./v0Habitat.js";
 
 /*
- * V0.5 APPLICATION BOOTSTRAP
+ * V0 APPLICATION BOOTSTRAP
  *
  * Browser control intent
  *   ->
@@ -56,6 +56,18 @@ import {
  *   ->
  * Why / History inspector
  *
+ * Reset:
+ *
+ * browser reset intent
+ *   ->
+ * stop execution
+ *   ->
+ * construct predefined authoritative scenario
+ *   ->
+ * clear presentation/debug history
+ *   ->
+ * render
+ *
  * Diagnostic history never flows back into
  * Creature cognition.
  */
@@ -64,21 +76,7 @@ const root =
   requireV0BrowserRoot();
 
 const initialState =
-  createM1EpisodeState(
-    {
-      learningEnabled:
-        true,
-
-      memoryEnabled:
-        true,
-
-      foodX:
-        3,
-
-      foodOccluded:
-        false,
-    },
-  );
+  createInitialV0State();
 
 let controlView:
   V0ControlView | null =
@@ -140,6 +138,12 @@ function renderState(
         onStep: () => {
           controller.step();
         },
+
+        onReset: () => {
+          controller.reset(
+            createInitialV0State(),
+          );
+        },
       },
     );
 
@@ -185,6 +189,30 @@ controller =
         );
       },
 
+      onStateReset: (
+        current,
+      ) => {
+        /*
+         * Reset starts a new demonstration
+         * interval.
+         *
+         * Recent browser diagnostic history is
+         * therefore cleared rather than
+         * misrepresenting reset as an ordinary
+         * consecutive simulation tick.
+         *
+         * This is presentation/debug state,
+         * not Creature memory.
+         */
+        history =
+          createV0CausalHistory();
+
+        renderState(
+          current,
+          null,
+        );
+      },
+
       onModeChange: (
         mode,
       ) => {
@@ -199,6 +227,25 @@ renderState(
   initialState,
   null,
 );
+
+function createInitialV0State():
+  M1EpisodeState {
+  return createM1EpisodeState(
+    {
+      learningEnabled:
+        true,
+
+      memoryEnabled:
+        true,
+
+      foodX:
+        3,
+
+      foodOccluded:
+        false,
+    },
+  );
+}
 
 function requireV0BrowserRoot():
   HTMLElement {

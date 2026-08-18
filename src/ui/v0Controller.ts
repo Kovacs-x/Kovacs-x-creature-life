@@ -49,6 +49,23 @@ export interface V0ControllerCallbacks {
         M1EpisodeState,
     ) => void;
 
+  /*
+   * Reset is not a simulation transition.
+   *
+   * It replaces the current authoritative
+   * scenario state with an explicitly supplied
+   * authoritative initial state.
+   *
+   * Keeping this callback distinct prevents
+   * diagnostic history from pretending that
+   * reset was an ordinary consecutive tick.
+   */
+  readonly onStateReset:
+    (
+      current:
+        M1EpisodeState,
+    ) => void;
+
   readonly onModeChange:
     (
       mode:
@@ -73,6 +90,18 @@ export interface V0ControllerCallbacks {
  *
  * The habitat transition is still exactly one
  * authoritative Creature simulation tick.
+ *
+ * Reset is deliberately different:
+ *
+ * UI reset intent
+ *   ->
+ * stop browser scheduler
+ *   ->
+ * replace authoritative scenario state
+ *   ->
+ * render that state
+ *
+ * Reset does not execute cognition.
  *
  * This controller cannot:
  *
@@ -194,6 +223,37 @@ export class V0ApplicationController {
     this.setMode(
       "paused",
     );
+  }
+
+  /*
+   * Restore an explicitly supplied
+   * authoritative scenario state.
+   *
+   * No simulation tick occurs.
+   *
+   * The application is responsible for
+   * constructing the legitimate initial
+   * scenario state.
+   */
+  public reset(
+    nextState:
+      M1EpisodeState,
+  ): void {
+    this.stopScheduler();
+
+    this.state =
+      nextState;
+
+    this.setMode(
+      nextState.complete
+        ? "complete"
+        : "paused",
+    );
+
+    this.callbacks
+      .onStateReset(
+        nextState,
+      );
   }
 
   private advanceOneTick():

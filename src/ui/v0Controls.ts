@@ -11,6 +11,9 @@ export interface V0ControlActions {
 
   readonly onStep:
     () => void;
+
+  readonly onReset:
+    () => void;
 }
 
 export interface V0ControlView {
@@ -24,11 +27,12 @@ export interface V0ControlView {
  * V0 CONTROL PRESENTATION
  *
  * These controls emit only application
- * execution intent:
+ * execution/scenario intent:
  *
  * - Play;
  * - Pause;
- * - Step.
+ * - Step;
+ * - Reset.
  *
  * They have no interface for:
  *
@@ -38,6 +42,10 @@ export interface V0ControlView {
  * - food memory;
  * - neural activation;
  * - Creature coordinates.
+ *
+ * Reset restores the predefined authoritative
+ * scenario. It does not directly command the
+ * Creature.
  */
 export function mountV0Controls(
   root:
@@ -132,6 +140,21 @@ export function mountV0Controls(
         Step
       </strong>
     </button>
+
+    <button
+      class="v0-status-card"
+      type="button"
+      data-v0-reset
+      aria-label="Reset demonstration scenario"
+    >
+      <span class="v0-status-key">
+        Control
+      </span>
+
+      <strong class="v0-status-value">
+        Reset
+      </strong>
+    </button>
   `;
 
   habitatPanel.insertBefore(
@@ -157,6 +180,12 @@ export function mountV0Controls(
       "[data-v0-step]",
     );
 
+  const resetButton =
+    requireButton(
+      controls,
+      "[data-v0-reset]",
+    );
+
   playButton.addEventListener(
     "click",
     actions.onPlay,
@@ -170,6 +199,11 @@ export function mountV0Controls(
   stepButton.addEventListener(
     "click",
     actions.onStep,
+  );
+
+  resetButton.addEventListener(
+    "click",
+    actions.onReset,
   );
 
   const phaseBadge =
@@ -188,7 +222,7 @@ export function mountV0Controls(
     );
 
   footer.textContent =
-    "V0.6 adds presentation-only cues for genuine activity, hunger and scenario context. No visual cue commands Creature cognition.";
+    "V0.6 adds presentation-only cues for genuine activity, hunger and scenario context. No visual cue or application control commands Creature cognition.";
 
   const view:
     V0ControlView = {
@@ -216,6 +250,17 @@ export function mountV0Controls(
             "playing" ||
           mode ===
             "complete";
+
+        /*
+         * Reset remains available while
+         * paused, playing or complete.
+         *
+         * It terminates any active browser
+         * scheduler before restoring the
+         * authoritative scenario baseline.
+         */
+        resetButton.disabled =
+          false;
       },
     };
 

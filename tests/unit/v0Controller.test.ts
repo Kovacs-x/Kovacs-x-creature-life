@@ -117,34 +117,46 @@ interface ControllerHarness {
         M1EpisodeState;
     }>;
 
+  readonly resets:
+    M1EpisodeState[];
+
   readonly modeChanges:
     V0ControllerMode[];
+}
+
+function createTestState():
+  M1EpisodeState {
+  return createM1EpisodeState(
+    {
+      learningEnabled:
+        false,
+
+      memoryEnabled:
+        true,
+
+      foodX:
+        3,
+
+      foodOccluded:
+        false,
+    },
+  );
 }
 
 function createHarness():
   ControllerHarness {
   const initialState =
-    createM1EpisodeState(
-      {
-        learningEnabled:
-          false,
-
-        memoryEnabled:
-          true,
-
-        foodX:
-          3,
-
-        foodOccluded:
-          false,
-      },
-    );
+    createTestState();
 
   const scheduler =
     new ManualV0TickScheduler();
 
   const transitions:
     ControllerHarness["transitions"] =
+      [];
+
+  const resets:
+    M1EpisodeState[] =
       [];
 
   const modeChanges:
@@ -170,6 +182,14 @@ function createHarness():
           );
         },
 
+        onStateReset: (
+          current,
+        ) => {
+          resets.push(
+            current,
+          );
+        },
+
         onModeChange: (
           mode,
         ) => {
@@ -185,6 +205,7 @@ function createHarness():
     scheduler,
     controller,
     transitions,
+    resets,
     modeChanges,
   };
 }
@@ -198,6 +219,7 @@ describe(
         scheduler,
         controller,
         transitions,
+        resets,
       } =
         createHarness();
 
@@ -221,6 +243,10 @@ describe(
 
       expect(
         transitions,
+      ).toHaveLength(0);
+
+      expect(
+        resets,
       ).toHaveLength(0);
     });
 
@@ -283,13 +309,6 @@ describe(
         "paused",
       );
 
-      /*
-       * After the legitimate first direct
-       * experience, the deterministic V0
-       * environment activates the sensory
-       * screen and the resulting state records
-       * food as occluded.
-       */
       expect(
         controller
           .getState()
@@ -458,6 +477,146 @@ describe(
       );
     });
 
+    it("Reset stops active Play and restores the supplied authoritative scenario without simulating a tick", () => {
+      const {
+        scheduler,
+        controller,
+        transitions,
+        resets,
+        modeChanges,
+      } =
+        createHarness();
+
+      controller.play();
+
+      scheduler.pulse();
+
+      expect(
+        controller
+          .getState()
+          .tickIndex,
+      ).toBe(1);
+
+      expect(
+        transitions,
+      ).toHaveLength(1);
+
+      const resetState =
+        createTestState();
+
+      controller.reset(
+        resetState,
+      );
+
+      expect(
+        scheduler.active,
+      ).toBe(false);
+
+      expect(
+        controller.getMode(),
+      ).toBe(
+        "paused",
+      );
+
+      expect(
+        controller.getState(),
+      ).toBe(
+        resetState,
+      );
+
+      expect(
+        controller
+          .getState()
+          .tickIndex,
+      ).toBe(0);
+
+      /*
+       * Reset itself is not reported as an
+       * authoritative simulation transition.
+       */
+      expect(
+        transitions,
+      ).toHaveLength(1);
+
+      expect(
+        resets,
+      ).toEqual(
+        [
+          resetState,
+        ],
+      );
+
+      expect(
+        modeChanges,
+      ).toContain(
+        "playing",
+      );
+
+      expect(
+        modeChanges,
+      ).toContain(
+        "paused",
+      );
+
+      /*
+       * A stale scheduler pulse after reset
+       * cannot advance the restored state.
+       */
+      scheduler.pulse();
+
+      expect(
+        controller.getState(),
+      ).toBe(
+        resetState,
+      );
+    });
+
+    it("can restart normal authoritative stepping after reset", () => {
+      const {
+        controller,
+      } =
+        createHarness();
+
+      controller.step();
+
+      controller.step();
+
+      expect(
+        controller
+          .getState()
+          .tickIndex,
+      ).toBe(2);
+
+      const resetState =
+        createTestState();
+
+      controller.reset(
+        resetState,
+      );
+
+      expect(
+        controller
+          .getState()
+          .tickIndex,
+      ).toBe(0);
+
+      controller.step();
+
+      expect(
+        controller.getState(),
+      ).toEqual(
+        advanceV0Habitat(
+          resetState,
+        ),
+      );
+
+      expect(
+        controller
+          .getState()
+          .tickIndex,
+      ).toBe(1);
+    });
+
     it("automatically stops Play when the authoritative episode completes", () => {
       const {
         scheduler,
@@ -527,6 +686,67 @@ describe(
       ).toBe(
         "complete",
       );
+    });
+
+    it("Reset can leave a completed episode and restore a fresh paused scenario", () => {
+      const {
+        scheduler,
+        controller,
+        resets,
+      } =
+        createHarness();
+
+      controller.play();
+
+      for (
+        let index = 0;
+        index < 10 &&
+        !controller
+          .getState()
+          .complete;
+        index += 1
+      ) {
+        scheduler.pulse();
+      }
+
+      expect(
+        controller.getMode(),
+      ).toBe(
+        "complete",
+      );
+
+      const resetState =
+        createTestState();
+
+      controller.reset(
+        resetState,
+      );
+
+      expect(
+        controller.getMode(),
+      ).toBe(
+        "paused",
+      );
+
+      expect(
+        controller.getState(),
+      ).toBe(
+        resetState,
+      );
+
+      expect(
+        resets,
+      ).toContain(
+        resetState,
+      );
+
+      controller.step();
+
+      expect(
+        controller
+          .getState()
+          .tickIndex,
+      ).toBe(1);
     });
   },
 );
