@@ -24,6 +24,7 @@ import {
 } from "../../src/simulation/core/m3PlayerWorld.js";
 
 import {
+  M3_ACQUISITION_MOVE_DISTANCE,
   M3_HABITAT_BOUNDS,
   M3_HIDDEN_TARGET_ALTERNATE_FOOD,
   M3_PRIMARY_BRANCH_A_SEED,
@@ -840,6 +841,228 @@ describe(
           run(),
         ).toEqual(
           run(),
+        );
+      },
+    );
+
+    it(
+      "does not let SEEK overshoot arbitrary player-positioned food and reach it through ordinary contact and EAT instead",
+      () => {
+        /*
+         * Regression coverage for a genuine
+         * simulation integration bug exposed by
+         * the M3.9B2 browser smoke test.
+         *
+         * Arbitrary M3.8 player-positioned food
+         * is not guaranteed to sit on a
+         * trajectory where repeated exact
+         * M3_ACQUISITION_MOVE_DISTANCE steps ever
+         * enter the interaction radius. Before
+         * this fix, SEEK could oscillate back and
+         * forth across food placed at 0.6 world
+         * units away without ever making contact.
+         */
+        const state =
+          createInteractiveState();
+
+        const placement =
+          applyM3PlayerFoodPlacement(
+            state,
+
+            {
+              /*
+               * On the Creature's side of the
+               * real occluder (x = 4) and well
+               * inside perception range, so this
+               * exercises legitimate direct
+               * perception rather than occlusion.
+               */
+              x: 0.6,
+              y: 0,
+            },
+
+            0,
+          );
+
+        /*
+         * 1. Player placement itself executes no
+         * Creature tick.
+         */
+        expect(
+          placement.state.tickIndex,
+        ).toBe(
+          state.tickIndex,
+        );
+
+        expect(
+          placement.state
+            .simulationTimeSeconds,
+        ).toBe(
+          state.simulationTimeSeconds,
+        );
+
+        expect(
+          placement.state.position,
+        ).toBe(
+          state.position,
+        );
+
+        /*
+         * 2. Food is legitimately directly
+         * perceptible.
+         */
+        const perception =
+          deriveM3DirectFoodPerception(
+            placement.state.position,
+
+            placement.state.food,
+
+            placement.state
+              .sensoryOccluder,
+          );
+
+        expect(
+          perception.foodSignal,
+        ).not.toBeNull();
+
+        expect(
+          perception.foodSignal
+            ?.distance,
+        ).toBeCloseTo(
+          0.6,
+        );
+
+        const rngBeforeFirstTick =
+          placement.state.rngState;
+
+        /*
+         * 3. First ordinary tick selects SEEK
+         * through normal competition.
+         */
+        const firstTick =
+          advanceM3AcquisitionTick(
+            placement.state,
+          );
+
+        expect(
+          firstTick.evidence
+            .selectedActionId,
+        ).toBe(
+          "seek",
+        );
+
+        expect(
+          firstTick.evidence
+            .movementSource,
+        ).toBe(
+          "seek",
+        );
+
+        /*
+         * 4. SEEK movement distance does not
+         * exceed the locked
+         * M3_ACQUISITION_MOVE_DISTANCE.
+         */
+        expect(
+          firstTick.evidence
+            .distanceMoved,
+        ).toBeLessThanOrEqual(
+          M3_ACQUISITION_MOVE_DISTANCE,
+        );
+
+        /*
+         * 5. The Creature does not overshoot the
+         * legitimately perceived food; it stops
+         * exactly at the perceived location
+         * rather than travelling the full locked
+         * move distance past it.
+         */
+        expect(
+          firstTick.evidence
+            .distanceMoved,
+        ).toBeCloseTo(
+          0.6,
+        );
+
+        expect(
+          firstTick.state.position.x,
+        ).toBeCloseTo(
+          0.6,
+        );
+
+        expect(
+          firstTick.state.position.y,
+        ).toBeCloseTo(
+          0,
+        );
+
+        /*
+         * 6. No food is eaten during the SEEK
+         * tick itself.
+         */
+        expect(
+          firstTick.evidence.ate,
+        ).toBe(
+          false,
+        );
+
+        expect(
+          firstTick.state.food.consumed,
+        ).toBe(
+          false,
+        );
+
+        /*
+         * This fix consumes no additional
+         * simulation RNG: SEEK movement remains
+         * driven only by legitimate direct
+         * sensory evidence, exactly as before.
+         */
+        expect(
+          firstTick.evidence
+            .rngStateAfter,
+        ).toEqual(
+          rngBeforeFirstTick,
+        );
+
+        /*
+         * 7. The next ordinary tick's cognition
+         * receives genuine physical contact
+         * because the Creature legitimately
+         * stopped at the food.
+         */
+        const secondTick =
+          advanceM3AcquisitionTick(
+            firstTick.state,
+          );
+
+        /*
+         * 8. EAT independently wins through
+         * normal action competition on this
+         * later tick; nothing forced it.
+         *
+         * 9. Genuine eating succeeds.
+         */
+        expect(
+          secondTick.evidence
+            .selectedActionId,
+        ).toBe(
+          "eat",
+        );
+
+        expect(
+          secondTick.evidence.ate,
+        ).toBe(
+          true,
+        );
+
+        /*
+         * 10. Food becomes consumed.
+         */
+        expect(
+          secondTick.state.food.consumed,
+        ).toBe(
+          true,
         );
       },
     );

@@ -670,6 +670,23 @@ export function advanceM3AcquisitionTick(
    *
    * M3.6 memory is disabled, so there is no
    * remembered-food movement route here.
+   *
+   * M3_ACQUISITION_MOVE_DISTANCE is the maximum
+   * distance a single SEEK tick may travel, not
+   * a mandatory fixed step. Arbitrary M3.8
+   * player-positioned food is not guaranteed to
+   * lie on a trajectory where repeated exact
+   * full-distance steps ever enter the 0.25
+   * interaction radius, which could otherwise
+   * produce indefinite oscillation across the
+   * food. Clamping to the legitimately perceived
+   * sensory distance lets the Creature stop at
+   * the perceived food location instead of
+   * overshooting it. This still uses only the
+   * existing legitimate direction/distance
+   * evidence already available to cognition; it
+   * does not read hidden food coordinates, force
+   * EAT or consume food during this tick.
    */
   if (
     decision.selectedActionId ===
@@ -678,6 +695,15 @@ export function advanceM3AcquisitionTick(
       .foodSignal !==
       null
   ) {
+    const seekDistance =
+      Math.min(
+        M3_ACQUISITION_MOVE_DISTANCE,
+
+        directFoodPerceptionBefore
+          .foodSignal
+          .distance,
+      );
+
     const movement =
       moveAlongDirection(
         position,
@@ -690,7 +716,7 @@ export function advanceM3AcquisitionTick(
           .foodSignal
           .directionY,
 
-        M3_ACQUISITION_MOVE_DISTANCE,
+        seekDistance,
 
         M3_HABITAT_BOUNDS,
       );
