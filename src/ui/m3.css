@@ -1,0 +1,1298 @@
+:root {
+  font-family:
+    Inter,
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+
+  color:
+    #17201f;
+
+  background:
+    #e9f1ee;
+
+  font-synthesis:
+    none;
+
+  text-rendering:
+    optimizeLegibility;
+}
+
+* {
+  box-sizing:
+    border-box;
+}
+
+html {
+  min-width:
+    320px;
+
+  min-height:
+    100%;
+}
+
+body {
+  margin:
+    0;
+
+  min-width:
+    320px;
+
+  min-height:
+    100vh;
+
+  background:
+    linear-gradient(
+      180deg,
+      #f2f6f1 0%,
+      #dfe9e4 100%
+    );
+
+  overflow-x:
+    hidden;
+}
+
+button,
+input,
+textarea,
+select {
+  font:
+    inherit;
+}
+
+[hidden] {
+  display:
+    none !important;
+}
+
+.m3-shell {
+  width:
+    min(
+      100% - 24px,
+      880px
+    );
+
+  margin:
+    0 auto;
+
+  padding:
+    20px 0 36px;
+}
+
+.m3-header {
+  display:
+    flex;
+
+  align-items:
+    flex-start;
+
+  justify-content:
+    space-between;
+
+  gap:
+    16px;
+
+  margin-bottom:
+    18px;
+}
+
+.m3-eyebrow,
+.m3-section-label {
+  margin:
+    0 0 4px;
+
+  font-size:
+    0.72rem;
+
+  font-weight:
+    800;
+
+  letter-spacing:
+    0.13em;
+
+  text-transform:
+    uppercase;
+
+  color:
+    #4f6459;
+}
+
+.m3-header h1,
+.m3-section-heading h2,
+.m3-life-history-panel h2 {
+  margin:
+    0;
+
+  line-height:
+    1.05;
+}
+
+.m3-header h1 {
+  font-size:
+    clamp(
+      1.7rem,
+      6.5vw,
+      2.7rem
+    );
+}
+
+.m3-subtitle {
+  max-width:
+    600px;
+
+  margin:
+    9px 0 0;
+
+  color:
+    #55635b;
+
+  line-height:
+    1.5;
+
+  font-size:
+    0.92rem;
+}
+
+.m3-phase-badge {
+  flex:
+    0 0 auto;
+
+  padding:
+    7px 10px;
+
+  border:
+    1px solid
+    #a9beb4;
+
+  border-radius:
+    999px;
+
+  background:
+    rgba(
+      255,
+      255,
+      255,
+      0.7
+    );
+
+  font-size:
+    0.74rem;
+
+  font-weight:
+    800;
+
+  letter-spacing:
+    0.08em;
+}
+
+.m3-habitat-panel,
+.m3-status-panel,
+.m3-life-history-panel {
+  border:
+    1px solid
+    rgba(
+      35,
+      63,
+      53,
+      0.14
+    );
+
+  border-radius:
+    18px;
+
+  background:
+    rgba(
+      255,
+      255,
+      255,
+      0.78
+    );
+
+  box-shadow:
+    0 14px 40px
+    rgba(
+      31,
+      53,
+      45,
+      0.08
+    );
+}
+
+.m3-habitat-panel {
+  padding:
+    14px;
+}
+
+.m3-status-panel,
+.m3-life-history-panel {
+  margin-top:
+    14px;
+
+  padding:
+    14px;
+}
+
+.m3-section-heading {
+  display:
+    flex;
+
+  align-items:
+    flex-end;
+
+  justify-content:
+    space-between;
+
+  gap:
+    14px;
+
+  margin-bottom:
+    12px;
+}
+
+.m3-section-heading h2 {
+  font-size:
+    1.15rem;
+}
+
+.m3-tick-readout {
+  margin:
+    0;
+
+  color:
+    #5c6a63;
+
+  font-variant-numeric:
+    tabular-nums;
+
+  font-size:
+    0.84rem;
+}
+
+.m3-status-grid {
+  display:
+    grid;
+
+  grid-template-columns:
+    repeat(
+      auto-fit,
+      minmax(
+        135px,
+        1fr
+      )
+    );
+
+  gap:
+    9px;
+
+  margin-bottom:
+    14px;
+}
+
+.m3-status-card {
+  min-width:
+    0;
+
+  padding:
+    11px;
+
+  border:
+    1px solid
+    rgba(
+      41,
+      63,
+      53,
+      0.11
+    );
+
+  border-radius:
+    12px;
+
+  background:
+    #f4f8f2;
+
+  text-align:
+    left;
+}
+
+button.m3-status-card {
+  cursor:
+    pointer;
+
+  appearance:
+    none;
+
+  min-height:
+    44px;
+}
+
+button.m3-status-card:disabled {
+  opacity:
+    0.5;
+
+  cursor:
+    not-allowed;
+}
+
+button.m3-status-card:not(:disabled):hover {
+  border-color:
+    rgba(
+      41,
+      63,
+      53,
+      0.3
+    );
+}
+
+.m3-status-key {
+  display:
+    block;
+
+  margin-bottom:
+    4px;
+
+  color:
+    #6c766f;
+
+  font-size:
+    0.7rem;
+
+  font-weight:
+    700;
+
+  text-transform:
+    uppercase;
+
+  letter-spacing:
+    0.06em;
+}
+
+.m3-status-value {
+  display:
+    block;
+
+  overflow-wrap:
+    anywhere;
+
+  font-size:
+    0.9rem;
+
+  line-height:
+    1.3;
+}
+
+.m3-habitat {
+  position:
+    relative;
+
+  width:
+    100%;
+
+  aspect-ratio:
+    1 / 1;
+
+  overflow:
+    hidden;
+
+  border:
+    1px solid
+    #90a89b;
+
+  border-radius:
+    15px;
+
+  background:
+    #d3e6d8;
+
+  isolation:
+    isolate;
+
+  cursor:
+    crosshair;
+
+  touch-action:
+    manipulation;
+}
+
+.m3-world-grid {
+  position:
+    absolute;
+
+  inset:
+    0;
+
+  z-index:
+    0;
+
+  background-image:
+    linear-gradient(
+      rgba(
+        35,
+        73,
+        56,
+        0.07
+      )
+      1px,
+      transparent
+      1px
+    ),
+    linear-gradient(
+      90deg,
+      rgba(
+        35,
+        73,
+        56,
+        0.07
+      )
+      1px,
+      transparent
+      1px
+    );
+
+  background-size:
+    10% 10%;
+}
+
+.m3-world-grid::after {
+  content:
+    "";
+
+  position:
+    absolute;
+
+  inset:
+    6%;
+
+  border:
+    1px dashed
+    rgba(
+      37,
+      73,
+      55,
+      0.24
+    );
+
+  border-radius:
+    12px;
+}
+
+[data-m3-sensory-screen] {
+  position:
+    absolute;
+
+  z-index:
+    1;
+
+  width:
+    18px;
+
+  transform:
+    translateX(-50%);
+
+  border-radius:
+    999px;
+
+  pointer-events:
+    none;
+
+  transition:
+    none;
+}
+
+[data-m3-sensory-screen][data-active="true"] {
+  opacity:
+    1;
+
+  border:
+    1px solid rgba(53, 87, 74, 0.48);
+
+  background:
+    repeating-linear-gradient(
+      135deg,
+      rgba(75, 122, 106, 0.30) 0 6px,
+      rgba(122, 158, 145, 0.16) 6px 12px
+    );
+
+  box-shadow:
+    0 0 0 4px rgba(75, 110, 97, 0.08);
+}
+
+[data-m3-sensory-screen][data-active="false"] {
+  opacity:
+    0.42;
+
+  border:
+    1px dashed rgba(53, 87, 74, 0.42);
+
+  background:
+    rgba(75, 122, 106, 0.06);
+
+  box-shadow:
+    none;
+}
+
+.m3-creature,
+.m3-food {
+  position:
+    absolute;
+
+  z-index:
+    2;
+
+  transform-origin:
+    center;
+
+  transition:
+    none;
+}
+
+.m3-creature {
+  --m3-facing-angle:
+    0rad;
+
+  width:
+    clamp(
+      44px,
+      13%,
+      78px
+    );
+
+  aspect-ratio:
+    1;
+
+  transform:
+    translate(
+      -50%,
+      50%
+    )
+    rotate(
+      var(
+        --m3-facing-angle
+      )
+    );
+}
+
+.m3-creature-body {
+  position:
+    absolute;
+
+  inset:
+    16% 4% 16% 22%;
+
+  border:
+    2px solid
+    #2c4a37;
+
+  border-radius:
+    48% 52% 55% 45%;
+
+  background:
+    linear-gradient(
+      135deg,
+      #8fc07f,
+      #679a5e
+    );
+
+  box-shadow:
+    0 8px 16px
+    rgba(
+      35,
+      63,
+      45,
+      0.22
+    );
+}
+
+.m3-creature-head {
+  position:
+    absolute;
+
+  top:
+    22%;
+
+  right:
+    -6%;
+
+  width:
+    38%;
+
+  height:
+    56%;
+
+  border:
+    2px solid
+    #2c4a37;
+
+  border-radius:
+    50%;
+
+  background:
+    #7eaa72;
+
+  box-shadow:
+    0 4px 10px
+    rgba(
+      35,
+      63,
+      45,
+      0.18
+    );
+}
+
+.m3-creature-eye {
+  position:
+    absolute;
+
+  top:
+    32%;
+
+  width:
+    17%;
+
+  height:
+    17%;
+
+  border-radius:
+    50%;
+
+  background:
+    #182620;
+}
+
+.m3-creature-eye--left {
+  left:
+    18%;
+}
+
+.m3-creature-eye--right {
+  right:
+    18%;
+}
+
+.m3-creature-tail {
+  position:
+    absolute;
+
+  top:
+    38%;
+
+  left:
+    -8%;
+
+  width:
+    30%;
+
+  height:
+    24%;
+
+  background:
+    #5e8b55;
+
+  border:
+    2px solid
+    #2c4a37;
+
+  border-radius:
+    60% 10% 60% 10%;
+
+  transform:
+    rotate(
+      -18deg
+    );
+}
+
+.m3-creature-crest {
+  position:
+    absolute;
+
+  top:
+    -6%;
+
+  left:
+    38%;
+
+  width:
+    16%;
+
+  height:
+    28%;
+
+  background:
+    #4a7a45;
+
+  border:
+    2px solid
+    #2c4a37;
+
+  border-radius:
+    60% 60% 10% 10%;
+
+  transform:
+    rotate(
+      -8deg
+    );
+}
+
+/*
+ * Idle breathing is presentation-only. It
+ * changes no world position and therefore may
+ * continue while the simulation is paused.
+ */
+.m3-creature[data-activity="idle"]
+.m3-creature-body {
+  animation:
+    m3-idle-breathe
+    2.8s
+    ease-in-out
+    infinite;
+}
+
+/*
+ * Exploring, seeking and eating cues run once
+ * when a new authoritative transition is
+ * rendered. They do not continue pretending
+ * physical activity is ongoing while the
+ * simulation is paused.
+ */
+.m3-creature[data-activity="exploring"]
+.m3-creature-body {
+  animation:
+    m3-exploring-cue
+    460ms
+    ease-in-out
+    1;
+}
+
+.m3-creature[data-activity="seeking"]
+.m3-creature-body {
+  animation:
+    m3-seeking-cue
+    320ms
+    ease-out
+    1;
+}
+
+.m3-creature[data-activity="eating"]
+.m3-creature-body {
+  animation:
+    m3-eating-cue
+    520ms
+    ease-in-out
+    1;
+}
+
+/*
+ * Facing "unknown" means the presentation
+ * model derived no genuine displacement this
+ * render (no legitimate movement has occurred
+ * yet, or this is a same-tick external world
+ * update such as player food placement).
+ *
+ * The organism therefore takes a
+ * direction-neutral resting pose instead of a
+ * directional head/tail/crest silhouette, so
+ * it cannot visually imply an unearned heading
+ * toward any world position (such as the
+ * initial hidden food or a newly placed one).
+ * The directional anatomy becomes visible only
+ * once facingDirection is genuinely known.
+ */
+.m3-creature[data-facing="unknown"]
+.m3-creature-head,
+.m3-creature[data-facing="unknown"]
+.m3-creature-tail,
+.m3-creature[data-facing="unknown"]
+.m3-creature-crest {
+  opacity:
+    0;
+}
+
+.m3-creature[data-facing="unknown"]
+.m3-creature-body {
+  inset:
+    10%;
+
+  border-radius:
+    50%;
+}
+
+.m3-food {
+  width:
+    clamp(
+      22px,
+      5.5%,
+      38px
+    );
+
+  aspect-ratio:
+    1;
+
+  transform:
+    translate(
+      -50%,
+      50%
+    );
+
+  border:
+    2px solid
+    #6c3a2c;
+
+  border-radius:
+    50%;
+
+  background:
+    #c9664e;
+
+  box-shadow:
+    0 6px 14px
+    rgba(
+      80,
+      50,
+      40,
+      0.18
+    );
+}
+
+.m3-food-core {
+  position:
+    absolute;
+
+  top:
+    18%;
+
+  left:
+    29%;
+
+  width:
+    22%;
+
+  height:
+    22%;
+
+  border-radius:
+    50%;
+
+  background:
+    rgba(
+      255,
+      255,
+      255,
+      0.34
+    );
+}
+
+.m3-food[data-perception="occluded"],
+.m3-food[data-perception="out-of-range"] {
+  opacity:
+    0.55;
+}
+
+.m3-habitat-instruction {
+  margin:
+    10px 2px 0;
+
+  color:
+    #5b665f;
+
+  font-size:
+    0.82rem;
+
+  line-height:
+    1.4;
+}
+
+.m3-energy-block {
+  padding:
+    12px;
+
+  border-radius:
+    12px;
+
+  background:
+    #eef4ea;
+}
+
+.m3-energy-heading,
+.m3-energy-context {
+  display:
+    flex;
+
+  justify-content:
+    space-between;
+
+  gap:
+    12px;
+
+  font-size:
+    0.83rem;
+}
+
+.m3-energy-heading {
+  margin-bottom:
+    8px;
+}
+
+.m3-energy-heading strong,
+.m3-energy-context strong {
+  font-variant-numeric:
+    tabular-nums;
+}
+
+.m3-energy-track {
+  width:
+    100%;
+
+  height:
+    10px;
+
+  overflow:
+    hidden;
+
+  border-radius:
+    999px;
+
+  background:
+    #d3ddcf;
+}
+
+.m3-energy-fill {
+  width:
+    0;
+
+  height:
+    100%;
+
+  border-radius:
+    inherit;
+
+  background:
+    #4f8a5c;
+}
+
+.m3-energy-context {
+  margin-top:
+    7px;
+
+  color:
+    #626f68;
+}
+
+.m3-life-history-list {
+  display:
+    flex;
+
+  flex-direction:
+    column;
+
+  gap:
+    8px;
+
+  margin:
+    0;
+
+  padding:
+    0;
+
+  list-style:
+    none;
+}
+
+.m3-life-history-entry {
+  display:
+    flex;
+
+  align-items:
+    baseline;
+
+  gap:
+    10px;
+
+  padding:
+    9px 11px;
+
+  border:
+    1px solid
+    rgba(
+      41,
+      63,
+      53,
+      0.11
+    );
+
+  border-radius:
+    11px;
+
+  background:
+    #f4f8f2;
+}
+
+.m3-life-history-time {
+  flex:
+    0 0 auto;
+
+  font-variant-numeric:
+    tabular-nums;
+
+  font-weight:
+    800;
+
+  font-size:
+    0.78rem;
+
+  color:
+    #4f6459;
+}
+
+.m3-life-history-description {
+  font-size:
+    0.88rem;
+
+  line-height:
+    1.35;
+}
+
+.m3-life-history-empty {
+  margin:
+    0;
+
+  color:
+    #6c766f;
+
+  font-size:
+    0.88rem;
+}
+
+.m3-footer {
+  padding:
+    14px 4px 0;
+
+  color:
+    #6b756e;
+
+  text-align:
+    center;
+
+  font-size:
+    0.76rem;
+
+  line-height:
+    1.45;
+}
+
+@keyframes m3-idle-breathe {
+  0%,
+  100% {
+    transform:
+      scale(
+        0.965
+      );
+  }
+
+  50% {
+    transform:
+      scale(
+        1.035
+      );
+  }
+}
+
+@keyframes m3-exploring-cue {
+  0% {
+    transform:
+      scale(
+        0.9
+      )
+      translateX(
+        0
+      );
+  }
+
+  45% {
+    transform:
+      scale(
+        1.06
+      )
+      translateX(
+        -3%
+      );
+  }
+
+  100% {
+    transform:
+      scale(
+        1
+      )
+      translateX(
+        0
+      );
+  }
+}
+
+@keyframes m3-seeking-cue {
+  0% {
+    transform:
+      scale(
+        0.9
+      );
+  }
+
+  55% {
+    transform:
+      scale(
+        1.12
+      );
+  }
+
+  100% {
+    transform:
+      scale(
+        1
+      );
+  }
+}
+
+@keyframes m3-eating-cue {
+  0%,
+  100% {
+    transform:
+      scale(
+        1
+      );
+  }
+
+  35% {
+    transform:
+      scale(
+        1.18
+      );
+  }
+
+  70% {
+    transform:
+      scale(
+        0.9
+      );
+  }
+}
+
+@media (
+  prefers-reduced-motion:
+    reduce
+) {
+  .m3-creature-body {
+    animation:
+      none !important;
+  }
+}
+
+@media (
+  max-width:
+    680px
+) {
+  .m3-shell {
+    width:
+      min(
+        100% - 16px,
+        880px
+      );
+
+    padding-top:
+      14px;
+  }
+
+  .m3-header {
+    gap:
+      10px;
+
+    margin-bottom:
+      12px;
+  }
+
+  .m3-subtitle {
+    font-size:
+      0.86rem;
+  }
+
+  .m3-habitat-panel,
+  .m3-status-panel,
+  .m3-life-history-panel {
+    border-radius:
+      14px;
+
+    padding:
+      11px;
+  }
+
+  .m3-habitat {
+    border-radius:
+      11px;
+  }
+
+  .m3-status-grid {
+    grid-template-columns:
+      repeat(
+        2,
+        minmax(
+          0,
+          1fr
+        )
+      );
+  }
+}
+
+@media (
+  max-width:
+    420px
+) {
+  .m3-header {
+    align-items:
+      center;
+  }
+
+  .m3-phase-badge {
+    padding:
+      6px 8px;
+
+    font-size:
+      0.66rem;
+  }
+
+  .m3-status-grid {
+    grid-template-columns:
+      1fr;
+  }
+
+  .m3-status-card {
+    display:
+      flex;
+
+    align-items:
+      center;
+
+    justify-content:
+      space-between;
+
+    gap:
+      12px;
+  }
+
+  .m3-status-key {
+    margin:
+      0;
+  }
+
+  .m3-status-value {
+    text-align:
+      right;
+  }
+
+  .m3-life-history-entry {
+    flex-direction:
+      column;
+
+    gap:
+      3px;
+  }
+}
