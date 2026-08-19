@@ -68,6 +68,7 @@ import type {
 import {
   advanceExplorationPressure,
   createExplorationState,
+  deserializeExplorationState,
   type ExplorationState,
 } from "../drives/exploration.js";
 
@@ -78,6 +79,7 @@ import {
 
 import {
   createSensoryOccluder,
+  SENSORY_OCCLUDER_KIND,
   type SensoryOccluderState,
 } from "../../world/sensoryOccluder.js";
 
@@ -87,6 +89,14 @@ import {
 } from "./m3Discovery.js";
 
 import {
+  isBrainState,
+  isEligibilityTrace,
+  isFiniteNumber,
+  isFoodState,
+  isHungerState,
+  isRecord,
+  isVector,
+  isWeightChanges,
   M1_EPISODE_ENERGY_LOSS_PER_SECOND,
 } from "./m1Episode.js";
 
@@ -1268,5 +1278,378 @@ function actionIdToNodeId(
       throw new Error(
         `Unknown M3 action: ${actionId}`,
       );
+  }
+}
+
+/*
+ * M3.10A AUTHORITATIVE ACQUISITION PERSISTENCE
+ *
+ * This is storage/restoration only.
+ *
+ * Deserializing a checkpoint does not execute
+ * a tick, evaluate cognition, sample RNG or
+ * regenerate exploration state. It reproduces
+ * exactly the authoritative M3AcquisitionState
+ * that was serialized.
+ *
+ * Validation reuses the existing M1 checkpoint
+ * primitive-shape checks (position, hunger,
+ * food, brain, eligibility, weight changes)
+ * plus the existing exploration-state and RNG
+ * validators rather than duplicating them.
+ */
+export function serializeM3AcquisitionState(
+  state:
+    M3AcquisitionState,
+): string {
+  assertM3AcquisitionStateShape(
+    state,
+  );
+
+  return JSON.stringify(
+    state,
+  );
+}
+
+export function deserializeM3AcquisitionState(
+  serialized:
+    string,
+): M3AcquisitionState {
+  let parsed:
+    unknown;
+
+  try {
+    parsed =
+      JSON.parse(
+        serialized,
+      ) as unknown;
+  } catch (error) {
+    throw new Error(
+      "M3 acquisition state is not valid JSON.",
+      {
+        cause:
+          error,
+      },
+    );
+  }
+
+  assertM3AcquisitionStateShape(
+    parsed,
+  );
+
+  return parsed;
+}
+
+export function assertM3AcquisitionStateShape(
+  value:
+    unknown,
+): asserts value is M3AcquisitionState {
+  if (
+    !isRecord(
+      value,
+    )
+  ) {
+    throw new Error(
+      "M3 acquisition state must be an object.",
+    );
+  }
+
+  if (
+    value.schemaVersion !==
+    M3_ACQUISITION_STATE_SCHEMA_VERSION
+  ) {
+    throw new Error(
+      "Unsupported M3 acquisition state schema version.",
+    );
+  }
+
+  if (
+    !Number.isInteger(
+      value.tickIndex,
+    ) ||
+    (
+      value.tickIndex as number
+    ) < 0
+  ) {
+    throw new Error(
+      "M3 acquisition tickIndex is invalid.",
+    );
+  }
+
+  if (
+    !isFiniteNumber(
+      value.simulationTimeSeconds,
+    ) ||
+    value.simulationTimeSeconds <
+      0
+  ) {
+    throw new Error(
+      "M3 acquisition simulationTimeSeconds is invalid.",
+    );
+  }
+
+  if (
+    typeof value.learningEnabled !==
+    "boolean"
+  ) {
+    throw new Error(
+      "M3 acquisition learningEnabled must be a boolean.",
+    );
+  }
+
+  if (
+    typeof value.explorationEnabled !==
+    "boolean"
+  ) {
+    throw new Error(
+      "M3 acquisition explorationEnabled must be a boolean.",
+    );
+  }
+
+  /*
+   * M3.2 locks memoryEnabled to false for the
+   * authoritative acquisition state. A persisted
+   * checkpoint claiming otherwise does not match
+   * the contract this state was created under.
+   */
+  if (
+    value.memoryEnabled !==
+    false
+  ) {
+    throw new Error(
+      "M3 acquisition memoryEnabled must be false.",
+    );
+  }
+
+  if (
+    !isVector(
+      value.position,
+    )
+  ) {
+    throw new Error(
+      "M3 acquisition position is invalid.",
+    );
+  }
+
+  if (
+    !isHungerState(
+      value.hunger,
+    )
+  ) {
+    throw new Error(
+      "M3 acquisition hunger state is invalid.",
+    );
+  }
+
+  if (
+    !isFoodState(
+      value.food,
+    )
+  ) {
+    throw new Error(
+      "M3 acquisition food state is invalid.",
+    );
+  }
+
+  if (
+    !isSensoryOccluderState(
+      value.sensoryOccluder,
+    )
+  ) {
+    throw new Error(
+      "M3 acquisition sensory occluder state is invalid.",
+    );
+  }
+
+  assertValidExplorationStateField(
+    value.explorationState,
+  );
+
+  if (
+    !isBrainState(
+      value.brain,
+    )
+  ) {
+    throw new Error(
+      "M3 acquisition brain state is invalid.",
+    );
+  }
+
+  if (
+    !isEligibilityTrace(
+      value.eligibilityTrace,
+    )
+  ) {
+    throw new Error(
+      "M3 acquisition eligibility trace is invalid.",
+    );
+  }
+
+  assertValidRngStateField(
+    value.rngState,
+  );
+
+  if (
+    !Number.isInteger(
+      value.discoveryCount,
+    ) ||
+    (
+      value.discoveryCount as number
+    ) < 0
+  ) {
+    throw new Error(
+      "M3 acquisition discoveryCount is invalid.",
+    );
+  }
+
+  if (
+    !Number.isInteger(
+      value.consumptionCount,
+    ) ||
+    (
+      value.consumptionCount as number
+    ) < 0
+  ) {
+    throw new Error(
+      "M3 acquisition consumptionCount is invalid.",
+    );
+  }
+
+  if (
+    typeof value.ate !==
+    "boolean"
+  ) {
+    throw new Error(
+      "M3 acquisition ate flag is invalid.",
+    );
+  }
+
+  if (
+    !isFiniteNumber(
+      value.cumulativeReward,
+    )
+  ) {
+    throw new Error(
+      "M3 acquisition cumulativeReward is invalid.",
+    );
+  }
+
+  if (
+    !isWeightChanges(
+      value.weightChanges,
+    )
+  ) {
+    throw new Error(
+      "M3 acquisition weightChanges are invalid.",
+    );
+  }
+
+  if (
+    typeof value.complete !==
+    "boolean"
+  ) {
+    throw new Error(
+      "M3 acquisition complete flag is invalid.",
+    );
+  }
+}
+
+function isSensoryOccluderState(
+  value:
+    unknown,
+): value is SensoryOccluderState {
+  return (
+    isRecord(
+      value,
+    ) &&
+    value.kind ===
+      SENSORY_OCCLUDER_KIND &&
+    typeof value.active ===
+      "boolean" &&
+    isFiniteNumber(
+      value.x,
+    ) &&
+    isFiniteNumber(
+      value.minY,
+    ) &&
+    isFiniteNumber(
+      value.maxY,
+    ) &&
+    (
+      value.maxY as number
+    ) >=
+      (
+        value.minY as number
+      )
+  );
+}
+
+/*
+ * Reuses the existing authoritative
+ * ExplorationState validator via
+ * deserializeExplorationState(...) rather than
+ * duplicating its shape checks here.
+ */
+function assertValidExplorationStateField(
+  value:
+    unknown,
+): void {
+  try {
+    deserializeExplorationState(
+      JSON.stringify(
+        value,
+      ),
+    );
+  } catch (error) {
+    throw new Error(
+      "M3 acquisition exploration state is invalid.",
+      {
+        cause:
+          error,
+      },
+    );
+  }
+}
+
+/*
+ * Reuses the authoritative SeededRng
+ * constructor validation rather than
+ * duplicating its shape/range checks here.
+ */
+function assertValidRngStateField(
+  value:
+    unknown,
+): void {
+  /*
+   * The SeededRng constructor treats a bare
+   * number as a raw seed rather than a
+   * serialized state. A persisted checkpoint
+   * must supply the structured
+   * { algorithm, state } form, so that lenient
+   * constructor path must not be reached here.
+   */
+  if (
+    !isRecord(
+      value,
+    )
+  ) {
+    throw new Error(
+      "M3 acquisition RNG state must be an object.",
+    );
+  }
+
+  try {
+    // eslint-disable-next-line no-new
+    new SeededRng(
+      value as unknown as SeededRngState,
+    );
+  } catch (error) {
+    throw new Error(
+      "M3 acquisition RNG state is invalid.",
+      {
+        cause:
+          error,
+      },
+    );
   }
 }

@@ -3,7 +3,7 @@
 **Repository:** Kovacs-x/Kovacs-x-creature-life  
 **Current milestone:** M3 — First Autonomous Experience-Shaped Creature  
 **Last accepted milestone:** V0 — Creature Embodiment Vertical Slice  
-**Current phase:** M3.1 — Pure Exploration Mechanism preparation
+**Current phase:** M3.10 — Determinism, Persistence and Telemetry (implementation through M3.9B2 committed; M3.10A persistence committed; M3 remains active and not accepted)
 
 ---
 
@@ -247,7 +247,17 @@ Authoritative specification:
 
 `docs/M3_SPEC.md`
 
-Implementation has not yet begun.
+Implementation is underway and committed through M3.9B2, followed by a regression fix.
+
+Per the source-of-truth rule in Section 1 above, current committed GitHub code and tests outrank this section's prior stale "implementation not yet begun" text; that text was corrected here rather than left to mislead future readers.
+
+Committed implementation stages include exploration pressure, seeded exploratory movement, neural EXPLORE integration, environmental discovery, the experience-acquisition experiment, the standardized individuality probe, player food-world interaction, Creature presentation and persistent life history, and browser embodiment integration.
+
+Browser embodiment exposed a genuine SEEK overshoot edge case, in which repeated full-distance SEEK steps could oscillate across arbitrary player-positioned food without ever entering the interaction radius. This was fixed by clamping SEEK movement to the legitimately perceived sensory distance rather than always travelling the full locked move distance, using only existing legitimate direction/distance evidence already available to cognition.
+
+M3.10 — Determinism, Persistence and Telemetry is now active. M3.10A (authoritative run persistence and deterministic save/reload continuation) is committed. M3.10B (telemetry) and the remainder of M3.10 remain outstanding, as do M3.11 (behavioural and human evaluation) and M3.12 (independent adversarial review and formal audit).
+
+No formal M3 acceptance has occurred. M3 remains active and not accepted.
 
 M3 was selected from the evidence produced by V0 rather than from a predetermined cognitive milestone sequence.
 

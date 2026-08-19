@@ -10,6 +10,10 @@ import {
   type M3PlayerWorldPosition,
 } from "../simulation/core/m3PlayerWorld.js";
 
+import type {
+  M3PersistentRunState,
+} from "../simulation/core/m3Persistence.js";
+
 /*
  * Browser pacing only.
  *
@@ -44,6 +48,22 @@ export interface M3TickScheduler {
     handle:
       number,
   ): void;
+}
+
+/*
+ * Narrow pure restore boundary.
+ *
+ * This carries only the one piece of
+ * controller-owned state that persistence must
+ * reproduce: the next deterministic external
+ * player-event sequence number.
+ *
+ * Supplying this performs no simulation tick,
+ * evaluates no cognition and consumes no RNG.
+ */
+export interface M3ControllerRestoreOptions {
+  readonly nextEventSequence?:
+    number;
 }
 
 export interface M3ControllerCallbacks {
@@ -184,6 +204,23 @@ export class M3ApplicationController {
 
     private readonly callbacks:
       M3ControllerCallbacks,
+
+    /*
+     * Optional pure restore configuration.
+     *
+     * This is the narrowest justified restore
+     * boundary: it lets a restored run resume
+     * with its preserved next external-event
+     * sequence instead of silently restarting
+     * player-event ordering at 0.
+     *
+     * Supplying this does not execute a
+     * simulation tick, does not evaluate
+     * cognition and does not consume RNG. It
+     * also never invokes onPlayerFoodPlacement.
+     */
+    restoreOptions?:
+      M3ControllerRestoreOptions,
   ) {
     this.state =
       initialState;
@@ -192,6 +229,26 @@ export class M3ApplicationController {
       initialState.complete
         ? "complete"
         : "paused";
+
+    if (
+      restoreOptions?.nextEventSequence !==
+      undefined
+    ) {
+      if (
+        !Number.isInteger(
+          restoreOptions.nextEventSequence,
+        ) ||
+        restoreOptions.nextEventSequence <
+          0
+      ) {
+        throw new RangeError(
+          "Restored next event sequence must be a non-negative integer.",
+        );
+      }
+
+      this.nextEventSequence =
+        restoreOptions.nextEventSequence;
+    }
   }
 
   public getState():
@@ -469,6 +526,50 @@ export class M3ApplicationController {
         nextMode,
       );
   }
+}
+
+/*
+ * M3.10A CONTROLLER RESTORE BOUNDARY
+ *
+ * This constructs a controller from a
+ * previously persisted M3PersistentRunState.
+ *
+ * It performs exactly one thing beyond an
+ * ordinary constructor call: it carries the
+ * preserved next external-event sequence
+ * number forward so a restored run continues
+ * player-event ordering instead of restarting
+ * it at 0.
+ *
+ * This is not a new simulation path. It does
+ * not execute a tick, evaluate cognition or
+ * consume RNG. The resulting controller begins
+ * paused unless the restored authoritative run
+ * is already complete, exactly like the
+ * ordinary constructor.
+ */
+export function restoreM3ApplicationController(
+  persistentRun:
+    M3PersistentRunState,
+
+  scheduler:
+    M3TickScheduler,
+
+  callbacks:
+    M3ControllerCallbacks,
+): M3ApplicationController {
+  return new M3ApplicationController(
+    persistentRun.acquisitionState,
+
+    scheduler,
+
+    callbacks,
+
+    {
+      nextEventSequence:
+        persistentRun.nextPlayerEventSequence,
+    },
+  );
 }
 
 /*

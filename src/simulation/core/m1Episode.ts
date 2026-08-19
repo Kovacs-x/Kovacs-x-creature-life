@@ -869,7 +869,14 @@ function assertM1EpisodeStateShape(
   }
 }
 
-function isVector(
+/*
+ * Exported so other checkpoint-shape
+ * validators (for example M3's acquisition
+ * persistence contract) can reuse these
+ * primitive shape checks instead of
+ * duplicating them.
+ */
+export function isVector(
   value:
     unknown,
 ): value is {
@@ -890,7 +897,7 @@ function isVector(
   );
 }
 
-function isHungerState(
+export function isHungerState(
   value:
     unknown,
 ): value is HungerState {
@@ -919,7 +926,7 @@ function isHungerState(
   );
 }
 
-function isFoodState(
+export function isFoodState(
   value:
     unknown,
 ): value is FoodObjectState {
@@ -1038,7 +1045,7 @@ function isDirectionComponent(
   );
 }
 
-function isBrainState(
+export function isBrainState(
   value:
     unknown,
 ): value is BrainState {
@@ -1105,7 +1112,7 @@ function isBrainState(
   );
 }
 
-function isEligibilityTrace(
+export function isEligibilityTrace(
   value:
     unknown,
 ): value is readonly ConnectionEligibility[] {
@@ -1126,7 +1133,7 @@ function isEligibilityTrace(
   );
 }
 
-function isWeightChanges(
+export function isWeightChanges(
   value:
     unknown,
 ): value is readonly WeightChange[] {
@@ -1155,7 +1162,7 @@ function isWeightChanges(
   );
 }
 
-function isFiniteNumber(
+export function isFiniteNumber(
   value:
     unknown,
 ): value is number {
@@ -1168,7 +1175,7 @@ function isFiniteNumber(
   );
 }
 
-function isRecord(
+export function isRecord(
   value:
     unknown,
 ): value is Record<

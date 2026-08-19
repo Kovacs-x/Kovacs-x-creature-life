@@ -279,6 +279,192 @@ export function applyM3PlayerFoodPlacement(
   };
 }
 
+/*
+ * M3.10A persistence needs to validate
+ * previously committed M3PlayerFoodWorldEvent
+ * records read back from storage.
+ *
+ * This lives alongside the event's producing
+ * boundary rather than being duplicated inside
+ * the persistence envelope module.
+ */
+export function assertM3PlayerFoodWorldEvent(
+  value:
+    unknown,
+): asserts value is M3PlayerFoodWorldEvent {
+  if (
+    !isM3PlayerFoodWorldEvent(
+      value,
+    )
+  ) {
+    throw new Error(
+      "M3 player world event does not satisfy the persistence contract.",
+    );
+  }
+}
+
+function isM3PlayerFoodWorldEvent(
+  value:
+    unknown,
+): value is M3PlayerFoodWorldEvent {
+  if (
+    !isRecord(
+      value,
+    )
+  ) {
+    return false;
+  }
+
+  if (
+    value.schemaVersion !==
+      M3_PLAYER_WORLD_EVENT_SCHEMA_VERSION ||
+    value.kind !==
+      M3_PLAYER_WORLD_EVENT_KIND ||
+    value.source !==
+      M3_PLAYER_WORLD_EVENT_SOURCE ||
+    value.affectedObjectKind !==
+      "food"
+  ) {
+    return false;
+  }
+
+  if (
+    !Number.isInteger(
+      value.sequence,
+    ) ||
+    (
+      value.sequence as number
+    ) < 0
+  ) {
+    return false;
+  }
+
+  if (
+    !isFiniteNonNegativeNumber(
+      value.simulationTimeSeconds,
+    )
+  ) {
+    return false;
+  }
+
+  if (
+    !Number.isInteger(
+      value.tickIndex,
+    ) ||
+    (
+      value.tickIndex as number
+    ) < 0
+  ) {
+    return false;
+  }
+
+  if (
+    value.eventType !==
+      M3_PLAYER_FOOD_RELOCATED_EVENT &&
+    value.eventType !==
+      M3_PLAYER_FOOD_PLACED_EVENT
+  ) {
+    return false;
+  }
+
+  if (
+    typeof value.affectedObjectId !==
+      "string" ||
+    value.affectedObjectId.length ===
+      0
+  ) {
+    return false;
+  }
+
+  return (
+    isM3PlayerFoodWorldSnapshot(
+      value.previousWorldState,
+    ) &&
+    isM3PlayerFoodWorldSnapshot(
+      value.resultingWorldState,
+    )
+  );
+}
+
+function isM3PlayerFoodWorldSnapshot(
+  value:
+    unknown,
+): value is M3PlayerFoodWorldSnapshot {
+  return (
+    isRecord(
+      value,
+    ) &&
+    isM3PlayerWorldPosition(
+      value.position,
+    ) &&
+    typeof value.consumed ===
+      "boolean"
+  );
+}
+
+function isM3PlayerWorldPosition(
+  value:
+    unknown,
+): value is M3PlayerWorldPosition {
+  return (
+    isRecord(
+      value,
+    ) &&
+    isFiniteCoordinate(
+      value.x,
+    ) &&
+    isFiniteCoordinate(
+      value.y,
+    )
+  );
+}
+
+function isFiniteCoordinate(
+  value:
+    unknown,
+): value is number {
+  return (
+    typeof value ===
+      "number" &&
+    Number.isFinite(
+      value,
+    )
+  );
+}
+
+function isFiniteNonNegativeNumber(
+  value:
+    unknown,
+): value is number {
+  return (
+    typeof value ===
+      "number" &&
+    Number.isFinite(
+      value,
+    ) &&
+    value >=
+      0
+  );
+}
+
+function isRecord(
+  value:
+    unknown,
+): value is Record<
+  string,
+  unknown
+> {
+  return (
+    typeof value ===
+      "object" &&
+    value !==
+      null &&
+    !Array.isArray(
+      value,
+    )
+  );
+}
+
 function validateM3PlayerWorldPosition(
   position:
     M3PlayerWorldPosition,
