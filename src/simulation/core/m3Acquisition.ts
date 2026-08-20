@@ -70,6 +70,7 @@ import {
   createExplorationState,
   deserializeExplorationState,
   type ExplorationState,
+  type ExploratoryHeadingState,
 } from "../drives/exploration.js";
 
 import {
@@ -265,6 +266,17 @@ export interface M3AcquisitionTickEvidence {
   readonly simulationTimeSeconds:
     number;
 
+  /*
+   * M3.10B: genuine per-tick configuration
+   * evidence, already known to the tick and not
+   * recomputed.
+   */
+  readonly learningEnabled:
+    boolean;
+
+  readonly explorationEnabled:
+    boolean;
+
   readonly selectedActionId:
     string;
 
@@ -281,7 +293,111 @@ export interface M3AcquisitionTickEvidence {
   readonly explorationPressureBefore:
     number;
 
+  /*
+   * The exact exploration-pressure value
+   * actually supplied to evaluateM3Brain() this
+   * tick. Under the exploration-disabled control
+   * this is 0 even though
+   * explorationPressureBefore/After continue to
+   * reflect the Creature's own owned pressure
+   * state.
+   */
+  readonly explorationPressureInput:
+    number;
+
   readonly explorationPressureAfter:
+    number;
+
+  /*
+   * Genuine neural input activations, read
+   * directly from the already-evaluated brain
+   * rather than recomputed.
+   */
+  readonly hungerInputActivation:
+    number;
+
+  readonly directFoodInputActivation:
+    number;
+
+  readonly rememberedFoodInputActivation:
+    number;
+
+  /*
+   * The M3 acquisition route always evaluates
+   * cognition with M2 memory explicitly absent
+   * (memoryEnabled is locked false; recall is
+   * never supplied to evaluateM3Brain()). This
+   * literal makes that fact directly inspectable
+   * in telemetry instead of requiring an
+   * inference from rememberedFoodInputActivation
+   * alone.
+   */
+  readonly activeFoodMemoryPresent:
+    false;
+
+  readonly contactInputActivation:
+    number;
+
+  readonly contactInRange:
+    boolean;
+
+  readonly explorationInputActivation:
+    number;
+
+  /*
+   * Genuine action-node activations, taken
+   * directly from the brain evaluation result.
+   */
+  readonly idleActivation:
+    number;
+
+  readonly seekActivation:
+    number;
+
+  readonly eatActivation:
+    number;
+
+  readonly exploreActivation:
+    number;
+
+  /*
+   * Active exploratory heading immediately
+   * before this tick resolved its selected
+   * action, and again after resolution. Both are
+   * the genuine ExplorationState heading objects,
+   * not reconstructed.
+   */
+  readonly explorationHeadingBefore:
+    ExploratoryHeadingState | null;
+
+  readonly explorationHeadingAfter:
+    ExploratoryHeadingState | null;
+
+  readonly sampledNewHeading:
+    boolean;
+
+  /*
+   * Legitimate direction sources, distinguished
+   * by cause. Exploration direction comes only
+   * from the sampled/reused heading; SEEK
+   * direction comes only from the current direct
+   * FoodPerceptionSignal. Neither is inferred
+   * from hidden food coordinates.
+   */
+  readonly explorationMovementDirection: {
+    readonly x: number;
+    readonly y: number;
+  } | null;
+
+  readonly seekMovementDirection: {
+    readonly x: number;
+    readonly y: number;
+  } | null;
+
+  readonly movementSource:
+    M3AcquisitionMovementSource;
+
+  readonly distanceMoved:
     number;
 
   readonly directFoodPerceptionBefore:
@@ -290,11 +406,17 @@ export interface M3AcquisitionTickEvidence {
   readonly directFoodPerceptionAfterMovement:
     FoodPerceptionSignal | null;
 
-  readonly movementSource:
-    M3AcquisitionMovementSource;
+  /*
+   * Legitimate sensory-occlusion facts already
+   * computed while deriving the perception
+   * signals above. These are perceptual facts,
+   * not hidden world coordinates.
+   */
+  readonly occludedBeforeMovement:
+    boolean;
 
-  readonly distanceMoved:
-    number;
+  readonly occludedAfterMovement:
+    boolean;
 
   readonly autonomousDiscoveryOccurred:
     boolean;
@@ -304,6 +426,12 @@ export interface M3AcquisitionTickEvidence {
 
   readonly reward:
     number;
+
+  readonly eligibilityTraceBefore:
+    readonly ConnectionEligibility[];
+
+  readonly eligibilityTraceAfter:
+    readonly ConnectionEligibility[];
 
   readonly weightChanges:
     readonly WeightChange[];
@@ -674,6 +802,19 @@ export function advanceM3AcquisitionTick(
       .distanceMoved;
 
   /*
+   * Legitimate SEEK direction evidence, set only
+   * when SEEK movement actually occurs below.
+   * This is the same direct FoodPerceptionSignal
+   * direction already used to move the Creature,
+   * never a hidden food coordinate.
+   */
+  let seekMovementDirection: {
+    x: number;
+    y: number;
+  } | null =
+    null;
+
+  /*
    * Existing food-directed SEEK movement remains
    * driven only by legitimate direct sensory
    * direction.
@@ -739,6 +880,18 @@ export function advanceM3AcquisitionTick(
 
     distanceMoved =
       movement.distanceMoved;
+
+    seekMovementDirection = {
+      x:
+        directFoodPerceptionBefore
+          .foodSignal
+          .directionX,
+
+      y:
+        directFoodPerceptionBefore
+          .foodSignal
+          .directionY,
+    };
   }
 
   /*
@@ -967,6 +1120,12 @@ export function advanceM3AcquisitionTick(
       simulationTimeSeconds:
         state.simulationTimeSeconds,
 
+      learningEnabled:
+        state.learningEnabled,
+
+      explorationEnabled:
+        state.explorationEnabled,
+
       selectedActionId:
         decision.selectedActionId,
 
@@ -984,9 +1143,96 @@ export function advanceM3AcquisitionTick(
         state.explorationState
           .pressure,
 
+      explorationPressureInput:
+        explorationPressureForBrain,
+
       explorationPressureAfter:
         explorationState
           .pressure,
+
+      hungerInputActivation:
+        activations[
+          M1_NODE_IDS.hungerInput
+        ] ??
+        0,
+
+      directFoodInputActivation:
+        activations[
+          M1_NODE_IDS.foodInput
+        ] ??
+        0,
+
+      rememberedFoodInputActivation:
+        activations[
+          M1_NODE_IDS
+            .rememberedFoodInput
+        ] ??
+        0,
+
+      activeFoodMemoryPresent:
+        false,
+
+      contactInputActivation:
+        activations[
+          M1_NODE_IDS.contactInput
+        ] ??
+        0,
+
+      contactInRange:
+        contactSignal.inRange,
+
+      explorationInputActivation:
+        activations[
+          M3_NODE_IDS
+            .explorationInput
+        ] ??
+        0,
+
+      idleActivation:
+        decision.idleActivation,
+
+      seekActivation:
+        decision.seekActivation,
+
+      eatActivation:
+        decision.eatActivation,
+
+      exploreActivation:
+        decision.exploreActivation,
+
+      explorationHeadingBefore:
+        state.explorationState
+          .activeHeading,
+
+      explorationHeadingAfter:
+        explorationState
+          .activeHeading,
+
+      sampledNewHeading:
+        discoveryStep.movement
+          .sampledNewHeading,
+
+      explorationMovementDirection:
+        discoveryStep.movement
+          .directionX ===
+          null ||
+        discoveryStep.movement
+          .directionY ===
+          null
+          ? null
+          : {
+              x:
+                discoveryStep
+                  .movement
+                  .directionX,
+
+              y:
+                discoveryStep
+                  .movement
+                  .directionY,
+            },
+
+      seekMovementDirection,
 
       directFoodPerceptionBefore:
         directFoodPerceptionBefore
@@ -995,6 +1241,14 @@ export function advanceM3AcquisitionTick(
       directFoodPerceptionAfterMovement:
         directFoodPerceptionAfterMovement
           .foodSignal,
+
+      occludedBeforeMovement:
+        directFoodPerceptionBefore
+          .occluded,
+
+      occludedAfterMovement:
+        directFoodPerceptionAfterMovement
+          .occluded,
 
       movementSource,
 
@@ -1008,6 +1262,12 @@ export function advanceM3AcquisitionTick(
         ateThisTick,
 
       reward,
+
+      eligibilityTraceBefore:
+        state.eligibilityTrace,
+
+      eligibilityTraceAfter:
+        eligibilityTrace,
 
       weightChanges:
         plasticity.changes,

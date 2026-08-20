@@ -3,7 +3,7 @@
 **Repository:** Kovacs-x/Kovacs-x-creature-life  
 **Current milestone:** M3 — First Autonomous Experience-Shaped Creature  
 **Last accepted milestone:** V0 — Creature Embodiment Vertical Slice  
-**Current phase:** M3.10 — Determinism, Persistence and Telemetry (implementation through M3.9B2 committed; M3.10A persistence committed; M3 remains active and not accepted)
+**Current phase:** M3.10 — Determinism, Persistence and Telemetry (implementation through M3.9B2 committed; M3.10A persistence committed; M3.10B telemetry/RNG-isolation committed; M3 remains active and not accepted)
 
 ---
 
@@ -255,7 +255,11 @@ Committed implementation stages include exploration pressure, seeded exploratory
 
 Browser embodiment exposed a genuine SEEK overshoot edge case, in which repeated full-distance SEEK steps could oscillate across arbitrary player-positioned food without ever entering the interaction radius. This was fixed by clamping SEEK movement to the legitimately perceived sensory distance rather than always travelling the full locked move distance, using only existing legitimate direction/distance evidence already available to cognition.
 
-M3.10 — Determinism, Persistence and Telemetry is now active. M3.10A (authoritative run persistence and deterministic save/reload continuation) is committed. M3.10B (telemetry) and the remainder of M3.10 remain outstanding, as do M3.11 (behavioural and human evaluation) and M3.12 (independent adversarial review and formal audit).
+M3.10 — Determinism, Persistence and Telemetry is now active. M3.10A (authoritative run persistence and deterministic save/reload continuation) is committed. M3.10B (complete observational causal telemetry and RNG-isolation evidence) is committed as the current completed technical substep.
+
+M3.10's technical determinism/persistence/telemetry evidence is complete if and only if the M3.10A and M3.10B required automated tests pass; that evidence is not itself a claim of milestone acceptance.
+
+M3.11 (behavioural and human evaluation) and M3.12 (independent adversarial/formal audit) remain outstanding.
 
 No formal M3 acceptance has occurred. M3 remains active and not accepted.
 
