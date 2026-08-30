@@ -1,9 +1,9 @@
 # Creature Life — Project State
 
 **Repository:** Kovacs-x/Kovacs-x-creature-life  
-**Current milestone:** M3 — First Autonomous Experience-Shaped Creature  
-**Last accepted milestone:** V0 — Creature Embodiment Vertical Slice  
-**Current phase:** M3.11 complete (initial evaluation plus the M3.11R follow-up browser evaluation); M3.12 — Formal Audit is next; M3 remains active and NOT accepted.
+**Current milestone:** None active — M3 formally accepted  
+**Last accepted milestone:** M3 — First Autonomous Experience-Shaped Creature  
+**Current phase:** Post-M3 transition — M3 was formally accepted on 2026-08-30. The next formal phase is a minimal Creature Embodiment vertical slice, to begin in a fresh chat from the current committed GitHub state. No later cognitive milestone has begun.
 
 ---
 
@@ -241,7 +241,7 @@ M2 is now the accepted persistent-memory organism baseline.
 
 ### M3 — First Autonomous Experience-Shaped Creature
 
-Status: prospectively accepted on 2026-08-18 and currently active.
+Status: formally accepted on 2026-08-30.
 
 Authoritative specification:
 
@@ -269,7 +269,29 @@ The M3.11R follow-up human evaluation is complete. M2 food memory became visibly
 
 Life History recorded a genuine reward-driven learning event that changed six neural connection weights. The read-only standardized learning diagnostic showed Fresh equivalent = IDLE and Current learned state = IDLE while confirming that the connection weights differed from a fresh brain. This particular continuing Creature had therefore accumulated learned neural differences, but those differences had not crossed the standardized behavioural threshold at the time inspected; this browser observation is not evidence of fresh-versus-learned behavioural divergence. The prospectively controlled Branch A/B standardized probe remains the evidence for the central M3 causal learning claim. Overall, M3.11 showed genuine directional experiential improvement after M3.11R, particularly through visible memory/history and restored persistent autonomy, while strong attachment and strong perceived individuality remain unestablished. M3.11 is complete and M3.12 is the next outstanding step.
 
-No formal M3 acceptance has occurred. M3 remains active and not accepted.
+M3.12 completed the independent adversarial and primary formal audit. The audit found no blocking causal or architectural failures. The post-spec M3.11R action-feasibility correction was judged a legitimate action-affordance constraint derived from current sensory evidence rather than a hidden behavioural FSM: raw neural activations remain inspectable, normal competition still determines the winner among feasible actions, and no locked M3 seed, weight, learning rate, exploration constant or primary experimental metric was changed merely to force acceptance.
+
+The final human-evaluation record explicitly covered all eight M3 dimensions: agency improved; surprise improved; curiosity unchanged; interaction desire unchanged; individuality improved; attachment unchanged; replaceability unchanged; and legibility improved. This establishes directional experiential improvement without claiming strong attachment or strong replaceability reduction.
+
+The primary formal audit therefore classified AC1 through AC25 as PASS. The accepted central causal evidence remains the prospectively controlled M3 experiment:
+
+different legitimate experience histories  
+→ different reward / eligibility histories  
+→ different persistent learned neural state  
+→ equivalent later controlled conditions  
+→ different behaviour.
+
+The formal Branch A/B standardized probe, rather than the ordinary browser Creature's momentary fresh-versus-learned diagnostic, is the evidence for this central learning-divergence claim.
+
+The user explicitly accepted M3 on 2026-08-30.
+
+M3 is therefore formally accepted within its deliberately narrow claim:
+
+**The Creature can autonomously explore without hidden target knowledge, and differences in the experiences produced by that exploration can cause persistent differences in later behaviour through legitimate learning mechanisms.**
+
+M3 does not establish sophisticated curiosity, planning, personality, strong attachment, general navigation, multiple-Creature behaviour or sophisticated episodic memory. Those require later mechanisms and evidence.
+
+M3 is now the accepted autonomous experience-shaped Creature baseline.
 
 M3 was selected from the evidence produced by V0 rather than from a predetermined cognitive milestone sequence.
 
@@ -301,7 +323,7 @@ M3 must not be accepted merely because:
 
 M3 requires evidence that legitimate differences in lived experience create persistent internal differences that later alter behaviour under controlled equivalent conditions.
 
-M3 remains active until its specification, controls, adversarial tests, persistence evidence, telemetry, human evaluation and formal audit are completed and the user explicitly accepts the milestone.
+M3's specification, controls, adversarial tests, persistence evidence, telemetry, human evaluation and formal audit are complete, and the user explicitly accepted the milestone on 2026-08-30. No later milestone should be treated as active until its scope is explicitly established.
 
 ---
 
