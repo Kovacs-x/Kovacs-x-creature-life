@@ -3,7 +3,7 @@
 **Repository:** Kovacs-x/Kovacs-x-creature-life  
 **Current milestone:** M3 — First Autonomous Experience-Shaped Creature  
 **Last accepted milestone:** V0 — Creature Embodiment Vertical Slice  
-**Current phase:** M3.10 — Determinism, Persistence and Telemetry (implementation through M3.9B2 committed; M3.10A persistence committed; M3.10B telemetry/RNG-isolation committed; M3 remains active and not accepted)
+**Current phase:** M3.11R — Integrated Persistent Creature (M3.10 technical evidence complete; initial M3.11 human evaluation conducted; M3.11R corrects a persistent-play action-liveness defect via explicit sensory-derived action feasibility, alongside M2 memory integration; M3 remains active and NOT accepted; follow-up human evaluation and M3.12 outstanding)
 
 ---
 
@@ -259,7 +259,13 @@ M3.10 — Determinism, Persistence and Telemetry is now active. M3.10A (authorit
 
 M3.10's technical determinism/persistence/telemetry evidence is complete if and only if the M3.10A and M3.10B required automated tests pass; that evidence is not itself a claim of milestone acceptance.
 
-M3.11 (behavioural and human evaluation) and M3.12 (independent adversarial/formal audit) remain outstanding.
+The initial M3.11 (behavioural and human evaluation) was conducted against the browser-embodied Creature. Causal exploration and target independence passed: exploration was causally genuine, hidden food relocation did not alter the deterministic route, wandering → perception → SEEK → EAT was understandable, and target independence was demonstrable. However, the human/product evaluation showed insufficient directional improvement in agency and meaningful individuality, alongside further weak areas: perceived autonomy, similarity across repeated runs, exploration reading as demonstration-like rather than lived, unclear meaning of the life-history record, and learning being invisible to the observer.
+
+Persistent play additionally exposed a genuine action-liveness defect, distinct from the weak-area findings above: repeated legitimate feeding can legitimately strengthen a contact-independent learned connection (e.g. hunger-to-eat) through the same accepted reward-modulated plasticity rule used throughout M1/M3, until that action's activation exceeds every other candidate even when no physically supported opportunity exists for it. Because an unsuccessful action produces no reward, the state becomes a permanent fixed point: a learned but currently infeasible action monopolizes ordinary neural competition and physical displacement stops indefinitely. This is a liveness defect in the persistent-play architecture, not an artifact of any individual accepted M1/M2/M3 mechanism.
+
+M3.11R — Integrated Persistent Creature was triggered as a corrective integration substep addressing both findings. It integrates the already-accepted M1 learning, M2 food memory, M3 exploration, biology, player food relocation and life-history persistence into one continuing browser Creature, reusing the existing M2 memory primitives and the single authoritative M3 tick (no second simulation loop); the locked controlled M3 acquisition experiment remains memory-disabled by default and its causal claim is unchanged, while only the browser Creature enables food memory. M3.11R also corrects the persistent-play action-liveness defect by adding an explicit, legitimate-evidence-only action-feasibility gate to the generic M3 action competition (SEEK feasible only with a direct-perception or usable M2-recall direction; EAT feasible only with genuine food contact); this does not force a fallback action or hide any learned activation, it only restricts which candidate may win the same generic deterministic competition. No locked M3 seed, weight, learning rate or other constant was tuned to force a result. M3.11R is committed.
+
+M3.11's initial findings above stand; a follow-up human evaluation of the M3.11R-corrected Creature and M3.12 (independent adversarial/formal audit) remain outstanding.
 
 No formal M3 acceptance has occurred. M3 remains active and not accepted.
 

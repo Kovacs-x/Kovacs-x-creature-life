@@ -955,7 +955,13 @@ export function isFoodState(
   );
 }
 
-function isFoodMemoryTrace(
+/*
+ * Exported so other checkpoint-shape validators
+ * (for example M3's acquisition persistence
+ * contract) can reuse this shape check instead
+ * of duplicating it.
+ */
+export function isFoodMemoryTrace(
   value:
     unknown,
 ): value is FoodMemoryTrace {

@@ -27,6 +27,47 @@ export type M3FoodPerceptionState =
   | "out-of-range"
   | "consumed";
 
+/*
+ * Restrained, factual categorization of the
+ * Creature's own persistent M2 food memory:
+ *
+ * "none": no trace exists (memory disabled, or
+ * none has ever been encoded, or the trace has
+ * fully expired).
+ *
+ * "active": a trace exists and current direct
+ * food perception is present, so the trace is
+ * being kept in sync with genuine current
+ * sensory evidence rather than an aging
+ * impression.
+ *
+ * "decayed": a trace exists but current direct
+ * perception is absent, so the Creature is
+ * relying on a retained trace that is aging
+ * away from the world it once described.
+ *
+ * This deliberately keys off direct-perception
+ * presence rather than the trace's own
+ * ageSeconds field. Every tick's authoritative
+ * memory advance (mirroring the accepted
+ * advanceM1Episode(...) pattern) ages a
+ * just-encoded trace forward to the tick
+ * boundary before it is stored, so ageSeconds
+ * observed here is never exactly 0 even on the
+ * tick that legitimately refreshed it.
+ * Direct-perception presence is the genuine,
+ * always-reachable fact that distinguishes a
+ * live, currently-corroborated trace from one
+ * the Creature can only recall.
+ *
+ * This never fabricates a psychological claim
+ * such as "remembers" or "wants".
+ */
+export type M3FoodMemoryPresentationState =
+  | "none"
+  | "active"
+  | "decayed";
+
 export interface M3PresentationVector {
   readonly x:
     number;
@@ -163,6 +204,25 @@ export interface M3EnvironmentPresentation {
   readonly foodDirectlyPerceived:
     boolean;
 
+  /*
+   * Restrained factual food-memory category. See
+   * M3FoodMemoryPresentationState.
+   */
+  readonly foodMemoryState:
+    M3FoodMemoryPresentationState;
+
+  /*
+   * Present only so a Why/History-style factual
+   * provenance panel can display genuine memory
+   * age/confidence evidence when useful. null
+   * whenever foodMemoryState is "none".
+   */
+  readonly foodMemoryConfidence:
+    number | null;
+
+  readonly foodMemoryAgeSeconds:
+    number | null;
+
   readonly sensoryOccluder:
     M3SensoryOccluderPresentation;
 }
@@ -298,6 +358,15 @@ export function deriveM3PresentationModel(
         null,
     );
 
+  const foodMemoryState =
+    deriveFoodMemoryPresentationState(
+      current.foodMemory ??
+        null,
+
+      perception.foodSignal !==
+        null,
+    );
+
   return {
     schemaVersion:
       M3_PRESENTATION_MODEL_SCHEMA_VERSION,
@@ -371,6 +440,18 @@ export function deriveM3PresentationModel(
 
       foodDirectlyPerceived:
         perception.foodSignal !==
+        null,
+
+      foodMemoryState,
+
+      foodMemoryConfidence:
+        current.foodMemory?.
+          confidence ??
+        null,
+
+      foodMemoryAgeSeconds:
+        current.foodMemory?.
+          ageSeconds ??
         null,
 
       sensoryOccluder: {
@@ -471,6 +552,27 @@ function deriveFoodPerceptionState(
   }
 
   return "out-of-range";
+}
+
+function deriveFoodMemoryPresentationState(
+  foodMemory:
+    M3AcquisitionState[
+      "foodMemory"
+    ],
+
+  directlyPerceived:
+    boolean,
+): M3FoodMemoryPresentationState {
+  if (
+    foodMemory ===
+    null
+  ) {
+    return "none";
+  }
+
+  return directlyPerceived
+    ? "active"
+    : "decayed";
 }
 
 function deriveAuthoritativeDisplacement(

@@ -39,6 +39,14 @@ import {
   mountM3LifeHistory,
 } from "./m3LifeHistoryView.js";
 
+import {
+  runM3StandardizedLearningComparison,
+} from "../simulation/core/m3Probe.js";
+
+import {
+  mountM3LearningCheck,
+} from "./m3LearningCheckView.js";
+
 /*
  * M3 APPLICATION BOOTSTRAP
  *
@@ -155,6 +163,22 @@ function renderState(
     root,
     lifeHistory,
   );
+
+  /*
+   * Read-only diagnostic. This never runs during
+   * an authoritative tick and never mutates the
+   * Creature; it only compares the already-
+   * evaluated current.brain against a fresh
+   * equivalent under the locked standardized
+   * probe.
+   */
+  mountM3LearningCheck(
+    root,
+
+    runM3StandardizedLearningComparison(
+      current.brain,
+    ),
+  );
 }
 
 controller =
@@ -251,6 +275,13 @@ renderState(
  * learning and exploration enabled, matching
  * the committed M3.2 experimental contract.
  * This is not a search for a prettier seed.
+ *
+ * M3.11R additionally enables M2 memory for the
+ * ordinary browser Creature only. The locked
+ * controlled acquisition experiment and
+ * standardized probe are untouched by this and
+ * continue to construct memory-disabled state
+ * through their own existing call sites.
  */
 function createInitialM3State():
   M3AcquisitionState {
@@ -263,6 +294,9 @@ function createInitialM3State():
         true,
 
       explorationEnabled:
+        true,
+
+      memoryEnabled:
         true,
     },
   );

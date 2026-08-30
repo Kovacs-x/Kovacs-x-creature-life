@@ -190,7 +190,8 @@ select {
 
 .m3-habitat-panel,
 .m3-status-panel,
-.m3-life-history-panel {
+.m3-life-history-panel,
+.m3-learning-check-panel {
   border:
     1px solid
     rgba(
@@ -227,7 +228,8 @@ select {
 }
 
 .m3-status-panel,
-.m3-life-history-panel {
+.m3-life-history-panel,
+.m3-learning-check-panel {
   margin-top:
     14px;
 
@@ -1064,6 +1066,108 @@ button.m3-status-card:not(:disabled):hover {
     0.88rem;
 }
 
+.m3-learning-check-summary {
+  cursor:
+    pointer;
+
+  font-weight:
+    700;
+
+  font-size:
+    0.82rem;
+
+  letter-spacing:
+    0.02em;
+
+  text-transform:
+    uppercase;
+
+  color:
+    #5b665f;
+
+  padding:
+    4px 0 12px;
+}
+
+.m3-learning-check-note {
+  margin:
+    0 0 12px;
+
+  color:
+    #5b665f;
+
+  font-size:
+    0.82rem;
+
+  line-height:
+    1.4;
+}
+
+.m3-learning-check-rows {
+  display:
+    flex;
+
+  flex-direction:
+    column;
+
+  gap:
+    8px;
+}
+
+.m3-learning-check-row {
+  display:
+    flex;
+
+  align-items:
+    baseline;
+
+  justify-content:
+    space-between;
+
+  gap:
+    12px;
+
+  padding:
+    9px 11px;
+
+  border:
+    1px solid
+    rgba(
+      41,
+      63,
+      53,
+      0.11
+    );
+
+  border-radius:
+    11px;
+
+  background:
+    #f4f8f2;
+}
+
+.m3-learning-check-row-label {
+  font-weight:
+    700;
+
+  font-size:
+    0.82rem;
+
+  color:
+    #4f6459;
+}
+
+.m3-learning-check-row-value {
+  font-variant-numeric:
+    tabular-nums;
+
+  font-size:
+    0.88rem;
+
+  text-align:
+    right;
+}
+
 .m3-footer {
   padding:
     14px 4px 0;
@@ -1217,7 +1321,8 @@ button.m3-status-card:not(:disabled):hover {
 
   .m3-habitat-panel,
   .m3-status-panel,
-  .m3-life-history-panel {
+  .m3-life-history-panel,
+  .m3-learning-check-panel {
     border-radius:
       14px;
 
@@ -1294,5 +1399,18 @@ button.m3-status-card:not(:disabled):hover {
 
     gap:
       3px;
+  }
+
+  .m3-learning-check-row {
+    flex-direction:
+      column;
+
+    gap:
+      3px;
+  }
+
+  .m3-learning-check-row-value {
+    text-align:
+      left;
   }
 }

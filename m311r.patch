@@ -1,0 +1,3886 @@
+From 55712ee841b1405681d752a08bcb92c2aff1653d Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 27 Aug 2026 15:00:28 +0000
+Subject: [PATCH] feat(m3): integrate memory into persistent creature
+
+---
+ docs/PROJECT_STATE.md                   |   10 +-
+ src/rendering/m3Presentation.ts         |  102 ++
+ src/simulation/actions/competition.ts   |   29 +-
+ src/simulation/brain/m3Brain.ts         |   73 ++
+ src/simulation/core/m1Episode.ts        |    8 +-
+ src/simulation/core/m3Acquisition.ts    |  466 ++++++--
+ src/simulation/core/m3Probe.ts          |  102 ++
+ src/ui/m3.css                           |  124 +-
+ src/ui/m3Habitat.ts                     |   44 +
+ src/ui/m3LearningCheckView.ts           |  286 +++++
+ src/ui/m3Main.ts                        |   34 +
+ tests/unit/m3ActionLockLiveness.test.ts |  733 ++++++++++++
+ tests/unit/m3MemoryIntegration.test.ts  | 1380 +++++++++++++++++++++++
+ 13 files changed, 3307 insertions(+), 84 deletions(-)
+ create mode 100644 src/ui/m3LearningCheckView.ts
+ create mode 100644 tests/unit/m3ActionLockLiveness.test.ts
+ create mode 100644 tests/unit/m3MemoryIntegration.test.ts
+
+diff --git a/docs/PROJECT_STATE.md b/docs/PROJECT_STATE.md
+index d82e8cf..3b9cbed 100644
+--- a/docs/PROJECT_STATE.md
++++ b/docs/PROJECT_STATE.md
+@@ -3,7 +3,7 @@
+ **Repository:** Kovacs-x/Kovacs-x-creature-life  
+ **Current milestone:** M3 — First Autonomous Experience-Shaped Creature  
+ **Last accepted milestone:** V0 — Creature Embodiment Vertical Slice  
+-**Current phase:** M3.10 — Determinism, Persistence and Telemetry (implementation through M3.9B2 committed; M3.10A persistence committed; M3.10B telemetry/RNG-isolation committed; M3 remains active and not accepted)
++**Current phase:** M3.11R — Integrated Persistent Creature (M3.10 technical evidence complete; initial M3.11 human evaluation conducted; M3.11R corrects a persistent-play action-liveness defect via explicit sensory-derived action feasibility, alongside M2 memory integration; M3 remains active and NOT accepted; follow-up human evaluation and M3.12 outstanding)
+ 
+ ---
+ 
+@@ -259,7 +259,13 @@ M3.10 — Determinism, Persistence and Telemetry is now active. M3.10A (authorit
+ 
+ M3.10's technical determinism/persistence/telemetry evidence is complete if and only if the M3.10A and M3.10B required automated tests pass; that evidence is not itself a claim of milestone acceptance.
+ 
+-M3.11 (behavioural and human evaluation) and M3.12 (independent adversarial/formal audit) remain outstanding.
++The initial M3.11 (behavioural and human evaluation) was conducted against the browser-embodied Creature. Causal exploration and target independence passed: exploration was causally genuine, hidden food relocation did not alter the deterministic route, wandering → perception → SEEK → EAT was understandable, and target independence was demonstrable. However, the human/product evaluation showed insufficient directional improvement in agency and meaningful individuality, alongside further weak areas: perceived autonomy, similarity across repeated runs, exploration reading as demonstration-like rather than lived, unclear meaning of the life-history record, and learning being invisible to the observer.
++
++Persistent play additionally exposed a genuine action-liveness defect, distinct from the weak-area findings above: repeated legitimate feeding can legitimately strengthen a contact-independent learned connection (e.g. hunger-to-eat) through the same accepted reward-modulated plasticity rule used throughout M1/M3, until that action's activation exceeds every other candidate even when no physically supported opportunity exists for it. Because an unsuccessful action produces no reward, the state becomes a permanent fixed point: a learned but currently infeasible action monopolizes ordinary neural competition and physical displacement stops indefinitely. This is a liveness defect in the persistent-play architecture, not an artifact of any individual accepted M1/M2/M3 mechanism.
++
++M3.11R — Integrated Persistent Creature was triggered as a corrective integration substep addressing both findings. It integrates the already-accepted M1 learning, M2 food memory, M3 exploration, biology, player food relocation and life-history persistence into one continuing browser Creature, reusing the existing M2 memory primitives and the single authoritative M3 tick (no second simulation loop); the locked controlled M3 acquisition experiment remains memory-disabled by default and its causal claim is unchanged, while only the browser Creature enables food memory. M3.11R also corrects the persistent-play action-liveness defect by adding an explicit, legitimate-evidence-only action-feasibility gate to the generic M3 action competition (SEEK feasible only with a direct-perception or usable M2-recall direction; EAT feasible only with genuine food contact); this does not force a fallback action or hide any learned activation, it only restricts which candidate may win the same generic deterministic competition. No locked M3 seed, weight, learning rate or other constant was tuned to force a result. M3.11R is committed.
++
++M3.11's initial findings above stand; a follow-up human evaluation of the M3.11R-corrected Creature and M3.12 (independent adversarial/formal audit) remain outstanding.
+ 
+ No formal M3 acceptance has occurred. M3 remains active and not accepted.
+ 
+diff --git a/src/rendering/m3Presentation.ts b/src/rendering/m3Presentation.ts
+index c3d82d0..0418c37 100644
+--- a/src/rendering/m3Presentation.ts
++++ b/src/rendering/m3Presentation.ts
+@@ -27,6 +27,47 @@ export type M3FoodPerceptionState =
+   | "out-of-range"
+   | "consumed";
+ 
++/*
++ * Restrained, factual categorization of the
++ * Creature's own persistent M2 food memory:
++ *
++ * "none": no trace exists (memory disabled, or
++ * none has ever been encoded, or the trace has
++ * fully expired).
++ *
++ * "active": a trace exists and current direct
++ * food perception is present, so the trace is
++ * being kept in sync with genuine current
++ * sensory evidence rather than an aging
++ * impression.
++ *
++ * "decayed": a trace exists but current direct
++ * perception is absent, so the Creature is
++ * relying on a retained trace that is aging
++ * away from the world it once described.
++ *
++ * This deliberately keys off direct-perception
++ * presence rather than the trace's own
++ * ageSeconds field. Every tick's authoritative
++ * memory advance (mirroring the accepted
++ * advanceM1Episode(...) pattern) ages a
++ * just-encoded trace forward to the tick
++ * boundary before it is stored, so ageSeconds
++ * observed here is never exactly 0 even on the
++ * tick that legitimately refreshed it.
++ * Direct-perception presence is the genuine,
++ * always-reachable fact that distinguishes a
++ * live, currently-corroborated trace from one
++ * the Creature can only recall.
++ *
++ * This never fabricates a psychological claim
++ * such as "remembers" or "wants".
++ */
++export type M3FoodMemoryPresentationState =
++  | "none"
++  | "active"
++  | "decayed";
++
+ export interface M3PresentationVector {
+   readonly x:
+     number;
+@@ -163,6 +204,25 @@ export interface M3EnvironmentPresentation {
+   readonly foodDirectlyPerceived:
+     boolean;
+ 
++  /*
++   * Restrained factual food-memory category. See
++   * M3FoodMemoryPresentationState.
++   */
++  readonly foodMemoryState:
++    M3FoodMemoryPresentationState;
++
++  /*
++   * Present only so a Why/History-style factual
++   * provenance panel can display genuine memory
++   * age/confidence evidence when useful. null
++   * whenever foodMemoryState is "none".
++   */
++  readonly foodMemoryConfidence:
++    number | null;
++
++  readonly foodMemoryAgeSeconds:
++    number | null;
++
+   readonly sensoryOccluder:
+     M3SensoryOccluderPresentation;
+ }
+@@ -298,6 +358,15 @@ export function deriveM3PresentationModel(
+         null,
+     );
+ 
++  const foodMemoryState =
++    deriveFoodMemoryPresentationState(
++      current.foodMemory ??
++        null,
++
++      perception.foodSignal !==
++        null,
++    );
++
+   return {
+     schemaVersion:
+       M3_PRESENTATION_MODEL_SCHEMA_VERSION,
+@@ -373,6 +442,18 @@ export function deriveM3PresentationModel(
+         perception.foodSignal !==
+         null,
+ 
++      foodMemoryState,
++
++      foodMemoryConfidence:
++        current.foodMemory?.
++          confidence ??
++        null,
++
++      foodMemoryAgeSeconds:
++        current.foodMemory?.
++          ageSeconds ??
++        null,
++
+       sensoryOccluder: {
+         active:
+           current
+@@ -473,6 +554,27 @@ function deriveFoodPerceptionState(
+   return "out-of-range";
+ }
+ 
++function deriveFoodMemoryPresentationState(
++  foodMemory:
++    M3AcquisitionState[
++      "foodMemory"
++    ],
++
++  directlyPerceived:
++    boolean,
++): M3FoodMemoryPresentationState {
++  if (
++    foodMemory ===
++    null
++  ) {
++    return "none";
++  }
++
++  return directlyPerceived
++    ? "active"
++    : "decayed";
++}
++
+ function deriveAuthoritativeDisplacement(
+   current:
+     M3AcquisitionState,
+diff --git a/src/simulation/actions/competition.ts b/src/simulation/actions/competition.ts
+index c28f5ff..4b8e5ce 100644
+--- a/src/simulation/actions/competition.ts
++++ b/src/simulation/actions/competition.ts
+@@ -1,6 +1,23 @@
+ export interface ActionCandidate {
+   readonly actionId: string;
+   readonly activation: number;
++
++  /*
++   * Optional legitimate-evidence feasibility gate.
++   *
++   * Defaults to true, so every existing caller that
++   * omits this field (M1's evaluateM1Brain and any
++   * other pre-M3.11R candidate list) retains exactly
++   * its current selection behaviour.
++   *
++   * An unavailable candidate's activation is still
++   * validated and remains observable to callers; it
++   * is only excluded from winning the competition.
++   * This is not a hidden fallback FSM: the candidate
++   * set and their raw activations are unchanged, only
++   * eligibility to win is restricted.
++   */
++  readonly available?: boolean;
+ }
+ 
+ export interface ActionSelection {
+@@ -15,7 +32,7 @@ export function selectHighestActivation(
+     throw new Error("At least one action candidate is required.");
+   }
+ 
+-  let selected = candidates[0];
++  let selected: ActionCandidate | undefined;
+ 
+   for (const candidate of candidates) {
+     if (!Number.isFinite(candidate.activation)) {
+@@ -24,6 +41,12 @@ export function selectHighestActivation(
+       );
+     }
+ 
++    const isAvailable = candidate.available ?? true;
++
++    if (!isAvailable) {
++      continue;
++    }
++
+     if (
+       selected === undefined ||
+       candidate.activation > selected.activation
+@@ -33,7 +56,9 @@ export function selectHighestActivation(
+   }
+ 
+   if (selected === undefined) {
+-    throw new Error("Unable to select an action candidate.");
++    throw new Error(
++      "At least one action candidate must be available to win the competition.",
++    );
+   }
+ 
+   return {
+diff --git a/src/simulation/brain/m3Brain.ts b/src/simulation/brain/m3Brain.ts
+index dbee17d..710b144 100644
+--- a/src/simulation/brain/m3Brain.ts
++++ b/src/simulation/brain/m3Brain.ts
+@@ -65,6 +65,26 @@ export interface M3BrainEvaluation {
+   readonly exploreActivation:
+     number;
+ 
++  /*
++   * M3.11R explicit action-feasibility evidence.
++   *
++   * Derived only from legitimate current sensor
++   * evidence already supplied to this function
++   * (direct perception, M2 recall, food contact),
++   * never from hidden food coordinates, object
++   * IDs or renderer state.
++   *
++   * IDLE and EXPLORE are always feasible and are
++   * not represented here: IDLE requires no
++   * evidence, and EXPLORE retains its existing
++   * normal M3 competition semantics unforced.
++   */
++  readonly seekActionFeasible:
++    boolean;
++
++  readonly eatActionFeasible:
++    boolean;
++
+   readonly selectedActionId:
+     string;
+ }
+@@ -273,6 +293,49 @@ export function evaluateM3Brain(
+       M3_NODE_IDS.exploreOutput
+     ] ?? 0;
+ 
++  /*
++   * M3.11R EXPLICIT ACTION FEASIBILITY
++   *
++   * A genuine persistent-play liveness defect was
++   * found in continuous repeated-feeding play:
++   * reward-modulated plasticity can legitimately
++   * strengthen a contact-independent connection
++   * (e.g. hunger-to-eat) until an action wins
++   * competition even though no physically
++   * supported opportunity exists for it. Because
++   * an unsuccessful action produces no reward and
++   * no biological change, the state becomes a
++   * permanent fixed point: the same physically
++   * unsupported action wins forever.
++   *
++   * Feasibility does not choose a fallback action
++   * and does not zero or hide the raw learned
++   * activation. It only restricts which candidates
++   * may *win* the same generic deterministic
++   * competition, using exclusively evidence already
++   * legitimately available to cognition this tick:
++   *
++   * - SEEK is feasible only when a legitimate
++   *   movement-direction source exists: current
++   *   direct perception, or a currently usable M2
++   *   recall signal.
++   * - EAT is feasible only when the legitimate
++   *   food-contact sense reports inRange.
++   *
++   * IDLE is always feasible. EXPLORE keeps its
++   * existing normal M3 competition semantics
++   * unforced (always feasible; still must win on
++   * activation like any other candidate).
++   */
++  const seekActionFeasible =
++    food !==
++      null ||
++    rememberedFood !==
++      null;
++
++  const eatActionFeasible =
++    contact.inRange;
++
+   /*
+    * EXPLORE receives no selection privilege.
+    *
+@@ -302,6 +365,9 @@ export function evaluateM3Brain(
+ 
+           activation:
+             seekActivation,
++
++          available:
++            seekActionFeasible,
+         },
+ 
+         {
+@@ -310,6 +376,9 @@ export function evaluateM3Brain(
+ 
+           activation:
+             eatActivation,
++
++          available:
++            eatActionFeasible,
+         },
+ 
+         {
+@@ -334,6 +403,10 @@ export function evaluateM3Brain(
+ 
+     exploreActivation,
+ 
++    seekActionFeasible,
++
++    eatActionFeasible,
++
+     selectedActionId:
+       selection.selectedActionId,
+   };
+diff --git a/src/simulation/core/m1Episode.ts b/src/simulation/core/m1Episode.ts
+index 5f6a969..b61e6d9 100644
+--- a/src/simulation/core/m1Episode.ts
++++ b/src/simulation/core/m1Episode.ts
+@@ -955,7 +955,13 @@ export function isFoodState(
+   );
+ }
+ 
+-function isFoodMemoryTrace(
++/*
++ * Exported so other checkpoint-shape validators
++ * (for example M3's acquisition persistence
++ * contract) can reuse this shape check instead
++ * of duplicating it.
++ */
++export function isFoodMemoryTrace(
+   value:
+     unknown,
+ ): value is FoodMemoryTrace {
+diff --git a/src/simulation/core/m3Acquisition.ts b/src/simulation/core/m3Acquisition.ts
+index 3f4e596..c27db61 100644
+--- a/src/simulation/core/m3Acquisition.ts
++++ b/src/simulation/core/m3Acquisition.ts
+@@ -65,6 +65,14 @@ import type {
+   FoodPerceptionSignal,
+ } from "../senses/foodPerception.js";
+ 
++import {
++  advanceFoodMemory,
++  encodeFoodMemory,
++  recallFoodMemory,
++  type FoodMemoryRecallSignal,
++  type FoodMemoryTrace,
++} from "../memory/foodMemory.js";
++
+ import {
+   advanceExplorationPressure,
+   createExplorationState,
+@@ -93,6 +101,7 @@ import {
+   isBrainState,
+   isEligibilityTrace,
+   isFiniteNumber,
++  isFoodMemoryTrace,
+   isFoodState,
+   isHungerState,
+   isRecord,
+@@ -179,14 +188,25 @@ export interface M3AcquisitionState {
+     boolean;
+ 
+   /*
+-   * M3.2 explicitly disables M2 memory during
+-   * the controlled acquisition experiment.
+-   *
+-   * This keeps discovery/learning history
++   * M3.2 locks the controlled acquisition
++   * experiment and standardized probe to
++   * memoryEnabled = false (see
++   * M3_ACQUISITION_MEMORY_ENABLED and
++   * M3_STANDARDIZED_PROBE.memoryEnabled), so
++   * discovery/learning history there stays
+    * separate from remembered-food guidance.
++   *
++   * M3.11R widens the type to a genuine boolean
++   * so the ordinary browser Creature can enable
++   * M2 memory. createM3AcquisitionState(...)
++   * still defaults to
++   * M3_ACQUISITION_MEMORY_ENABLED (false) when
++   * memoryEnabled is not explicitly supplied, so
++   * every existing controlled-experiment call
++   * site is unaffected.
+    */
+   readonly memoryEnabled:
+-    false;
++    boolean;
+ 
+   readonly position: {
+     readonly x: number;
+@@ -199,6 +219,19 @@ export interface M3AcquisitionState {
+   readonly food:
+     FoodObjectState;
+ 
++  /*
++   * Persistent M2 sensory-derived memory.
++   *
++   * Reuses the accepted foodMemory.ts primitives
++   * exactly (encodeFoodMemory/advanceFoodMemory/
++   * recallFoodMemory). Always null while
++   * memoryEnabled is false, matching the locked
++   * controlled-acquisition/standardized-probe
++   * contract.
++   */
++  readonly foodMemory:
++    FoodMemoryTrace | null;
++
+   readonly sensoryOccluder:
+     SensoryOccluderState;
+ 
+@@ -250,6 +283,16 @@ export interface M3AcquisitionRoundConfig {
+   readonly explorationEnabled:
+     boolean;
+ 
++  /*
++   * Optional so every existing controlled-
++   * experiment call site keeps the locked
++   * M3_ACQUISITION_MEMORY_ENABLED (false)
++   * default without change. The ordinary browser
++   * Creature creator supplies true.
++   */
++  readonly memoryEnabled?:
++    boolean;
++
+   /*
+    * Supplying a brain allows the controlled
+    * experiment to preserve learned neural state
+@@ -323,17 +366,56 @@ export interface M3AcquisitionTickEvidence {
+     number;
+ 
+   /*
+-   * The M3 acquisition route always evaluates
+-   * cognition with M2 memory explicitly absent
+-   * (memoryEnabled is locked false; recall is
+-   * never supplied to evaluateM3Brain()). This
+-   * literal makes that fact directly inspectable
+-   * in telemetry instead of requiring an
+-   * inference from rememberedFoodInputActivation
+-   * alone.
++   * True only when a usable M2 recall signal was
++   * actually supplied to evaluateM3Brain() this
++   * tick (memoryEnabled, no current direct
++   * perception, and a still-recallable trace).
++   * Always false for the locked memory-disabled
++   * controlled-acquisition/standardized-probe
++   * route, matching the existing M3.2 contract.
+    */
+   readonly activeFoodMemoryPresent:
+-    false;
++    boolean;
++
++  /*
++   * The Creature's own persistent memory trace
++   * immediately before this tick's update, and
++   * again after. Both are the genuine
++   * FoodMemoryTrace objects (or null), never
++   * reconstructed. Comparing the two lets an
++   * observer determine encoding, refresh,
++   * decay or expiration without this module
++   * recomputing that classification itself.
++   */
++  readonly foodMemoryBefore:
++    FoodMemoryTrace | null;
++
++  readonly foodMemoryAfter:
++    FoodMemoryTrace | null;
++
++  /*
++   * The exact recall signal supplied to
++   * evaluateM3Brain() this tick, or null. This
++   * is recallFoodMemory(...) applied to the
++   * Creature's own trace; it is never derived
++   * from hidden food coordinates.
++   */
++  readonly foodMemoryRecall:
++    FoodMemoryRecallSignal | null;
++
++  /*
++   * Which legitimate evidence source, if any,
++   * supplied the direction actually used for a
++   * SEEK physical consequence this tick. Direct
++   * perception always takes priority over
++   * recall; recall is used only when direct
++   * perception is absent. null when SEEK did not
++   * win or did not move.
++   */
++  readonly seekDirectionSource:
++    "direct-perception" |
++    "memory-recall" |
++    null;
+ 
+   readonly contactInputActivation:
+     number;
+@@ -360,6 +442,25 @@ export interface M3AcquisitionTickEvidence {
+   readonly exploreActivation:
+     number;
+ 
++  /*
++   * M3.11R explicit action-feasibility evidence,
++   * read directly from evaluateM3Brain()'s result.
++   *
++   * Raw learned activations above remain unchanged
++   * and causally inspectable even when a candidate
++   * was infeasible; feasibility only restricted
++   * which candidate could win this tick's
++   * competition, using only legitimate current
++   * sensor evidence (direct perception, M2 recall,
++   * food contact). It never chose a fallback action
++   * directly.
++   */
++  readonly seekActionFeasible:
++    boolean;
++
++  readonly eatActionFeasible:
++    boolean;
++
+   /*
+    * Active exploratory heading immediately
+    * before this tick resolved its selected
+@@ -552,6 +653,7 @@ export function createM3AcquisitionState(
+       config.explorationEnabled,
+ 
+     memoryEnabled:
++      config.memoryEnabled ??
+       M3_ACQUISITION_MEMORY_ENABLED,
+ 
+     position: {
+@@ -576,6 +678,9 @@ export function createM3AcquisitionState(
+         M3_ACQUISITION_FOOD.nutrition,
+       ),
+ 
++    foodMemory:
++      null,
++
+     sensoryOccluder:
+       createSensoryOccluder(
+         M3_ACQUISITION_OCCLUDER.x,
+@@ -681,6 +786,82 @@ export function advanceM3AcquisitionTick(
+       state.sensoryOccluder,
+     );
+ 
++  /*
++   * M3.11R MEMORY STATE UPDATE
++   *
++   * Reuses the accepted M2 primitives exactly,
++   * mirroring the integration already accepted
++   * in advanceM1Episode(...):
++   *
++   * memory disabled
++   *   -> no trace is retained;
++   *
++   * legitimate direct perception this tick
++   *   -> current evidence refreshes the trace;
++   *
++   * otherwise, an existing trace
++   *   -> ages through explicit simulation time
++   *      and may become unusable.
++   *
++   * This never inspects hidden food coordinates
++   * or the food object; it only ever reads the
++   * already-derived FoodPerceptionSignal.
++   */
++  const foodMemoryBefore:
++    FoodMemoryTrace | null =
++      state.foodMemory ??
++      null;
++
++  let foodMemory:
++    FoodMemoryTrace | null =
++      foodMemoryBefore;
++
++  if (!state.memoryEnabled) {
++    foodMemory =
++      null;
++  } else if (
++    directFoodPerceptionBefore
++      .foodSignal !==
++      null
++  ) {
++    foodMemory =
++      encodeFoodMemory(
++        directFoodPerceptionBefore
++          .foodSignal,
++
++        state.simulationTimeSeconds,
++      );
++  } else if (
++    foodMemory !==
++    null
++  ) {
++    foodMemory =
++      advanceFoodMemory(
++        foodMemory,
++        state.simulationTimeSeconds,
++      );
++  }
++
++  /*
++   * RECALL
++   *
++   * Exposed only while current direct
++   * perception is absent, so direct evidence
++   * always retains epistemic priority and is
++   * never combined with a freshly encoded
++   * representation of itself.
++   */
++  const foodMemoryRecall:
++    FoodMemoryRecallSignal | null =
++      state.memoryEnabled &&
++      directFoodPerceptionBefore
++        .foodSignal ===
++        null
++        ? recallFoodMemory(
++            foodMemory,
++          )
++        : null;
++
+   const hungerSignal =
+     senseHunger(
+       state.hunger,
+@@ -721,7 +902,7 @@ export function advanceM3AcquisitionTick(
+ 
+       contactSignal,
+ 
+-      null,
++      foodMemoryRecall,
+     );
+ 
+   const activations:
+@@ -814,13 +995,26 @@ export function advanceM3AcquisitionTick(
+   } | null =
+     null;
+ 
++  let seekDirectionSource:
++    "direct-perception" |
++    "memory-recall" |
++    null =
++      null;
++
+   /*
+-   * Existing food-directed SEEK movement remains
+-   * driven only by legitimate direct sensory
+-   * direction.
++   * SEEK MOVEMENT PROVENANCE (M2.4 / M3.11R)
++   *
++   * Priority, mirroring the accepted
++   * advanceM1Episode(...) integration exactly:
+    *
+-   * M3.6 memory is disabled, so there is no
+-   * remembered-food movement route here.
++   * 1. current legitimate direct perception;
++   * 2. otherwise a valid M2 recalled direction;
++   * 3. otherwise no SEEK displacement.
++   *
++   * Direct perception always wins when both are
++   * available; recall never supplies a hidden
++   * target coordinate and never bypasses this
++   * priority.
+    *
+    * M3_ACQUISITION_MOVE_DISTANCE is the maximum
+    * distance a single SEEK tick may travel, not
+@@ -830,68 +1024,118 @@ export function advanceM3AcquisitionTick(
+    * full-distance steps ever enter the 0.25
+    * interaction radius, which could otherwise
+    * produce indefinite oscillation across the
+-   * food. Clamping to the legitimately perceived
++   * food. When direct perception drives movement,
++   * clamping to the legitimately perceived
+    * sensory distance lets the Creature stop at
+    * the perceived food location instead of
+-   * overshooting it. This still uses only the
+-   * existing legitimate direction/distance
+-   * evidence already available to cognition; it
+-   * does not read hidden food coordinates, force
+-   * EAT or consume food during this tick.
++   * overshooting it. Recall carries no legitimate
++   * distance evidence (FoodMemoryRecallSignal
++   * never stores one), so recall-guided SEEK uses
++   * the full locked move distance, exactly as the
++   * accepted M2 recall-guided movement already
++   * does. Neither route reads hidden food
++   * coordinates, forces EAT or consumes food
++   * during this tick.
+    */
+   if (
+     decision.selectedActionId ===
+-      "seek" &&
+-    directFoodPerceptionBefore
+-      .foodSignal !==
+-      null
++    "seek"
+   ) {
+-    const seekDistance =
+-      Math.min(
+-        M3_ACQUISITION_MOVE_DISTANCE,
++    if (
++      directFoodPerceptionBefore
++        .foodSignal !==
++        null
++    ) {
++      const seekDistance =
++        Math.min(
++          M3_ACQUISITION_MOVE_DISTANCE,
+ 
+-        directFoodPerceptionBefore
+-          .foodSignal
+-          .distance,
+-      );
++          directFoodPerceptionBefore
++            .foodSignal
++            .distance,
++        );
+ 
+-    const movement =
+-      moveAlongDirection(
+-        position,
++      const movement =
++        moveAlongDirection(
++          position,
+ 
+-        directFoodPerceptionBefore
+-          .foodSignal
+-          .directionX,
++          directFoodPerceptionBefore
++            .foodSignal
++            .directionX,
+ 
+-        directFoodPerceptionBefore
+-          .foodSignal
+-          .directionY,
++          directFoodPerceptionBefore
++            .foodSignal
++            .directionY,
+ 
+-        seekDistance,
++          seekDistance,
+ 
+-        M3_HABITAT_BOUNDS,
+-      );
++          M3_HABITAT_BOUNDS,
++        );
+ 
+-    position =
+-      movement.position;
++      position =
++        movement.position;
+ 
+-    movementSource =
+-      "seek";
++      movementSource =
++        "seek";
+ 
+-    distanceMoved =
+-      movement.distanceMoved;
++      distanceMoved =
++        movement.distanceMoved;
+ 
+-    seekMovementDirection = {
+-      x:
+-        directFoodPerceptionBefore
+-          .foodSignal
+-          .directionX,
++      seekMovementDirection = {
++        x:
++          directFoodPerceptionBefore
++            .foodSignal
++            .directionX,
+ 
+-      y:
+-        directFoodPerceptionBefore
+-          .foodSignal
+-          .directionY,
+-    };
++        y:
++          directFoodPerceptionBefore
++            .foodSignal
++            .directionY,
++      };
++
++      seekDirectionSource =
++        "direct-perception";
++    } else if (
++      foodMemoryRecall !==
++      null
++    ) {
++      const movement =
++        moveAlongDirection(
++          position,
++
++          foodMemoryRecall
++            .directionX,
++
++          foodMemoryRecall
++            .directionY,
++
++          M3_ACQUISITION_MOVE_DISTANCE,
++
++          M3_HABITAT_BOUNDS,
++        );
++
++      position =
++        movement.position;
++
++      movementSource =
++        "seek";
++
++      distanceMoved =
++        movement.distanceMoved;
++
++      seekMovementDirection = {
++        x:
++          foodMemoryRecall
++            .directionX,
++
++        y:
++          foodMemoryRecall
++            .directionY,
++      };
++
++      seekDirectionSource =
++        "memory-recall";
++    }
+   }
+ 
+   /*
+@@ -1009,6 +1253,31 @@ export function advanceM3AcquisitionTick(
+       );
+   }
+ 
++  const nextSimulationTimeSeconds =
++    state.simulationTimeSeconds +
++    M3_ACQUISITION_TICK_SECONDS;
++
++  /*
++   * Store memory at the end-of-tick simulation
++   * time, mirroring advanceM1Episode(...).
++   * Decay remains based only on explicit
++   * simulation time, so a trace encoded earlier
++   * this same tick is aged forward to reflect
++   * the tick boundary before being read back at
++   * the start of the next tick.
++   */
++  if (
++    state.memoryEnabled &&
++    foodMemory !==
++      null
++  ) {
++    foodMemory =
++      advanceFoodMemory(
++        foodMemory,
++        nextSimulationTimeSeconds,
++      );
++  }
++
+   /*
+    * M3.2 locked pressure update ordering:
+    *
+@@ -1044,8 +1313,7 @@ export function advanceM3AcquisitionTick(
+         1,
+ 
+       simulationTimeSeconds:
+-        state.simulationTimeSeconds +
+-        M3_ACQUISITION_TICK_SECONDS,
++        nextSimulationTimeSeconds,
+ 
+       learningEnabled:
+         state.learningEnabled,
+@@ -1054,7 +1322,7 @@ export function advanceM3AcquisitionTick(
+         state.explorationEnabled,
+ 
+       memoryEnabled:
+-        false,
++        state.memoryEnabled,
+ 
+       position,
+ 
+@@ -1062,6 +1330,8 @@ export function advanceM3AcquisitionTick(
+ 
+       food,
+ 
++      foodMemory,
++
+       sensoryOccluder:
+         state.sensoryOccluder,
+ 
+@@ -1170,7 +1440,15 @@ export function advanceM3AcquisitionTick(
+         0,
+ 
+       activeFoodMemoryPresent:
+-        false,
++        foodMemoryRecall !==
++        null,
++
++      foodMemoryBefore,
++
++      foodMemoryAfter:
++        foodMemory,
++
++      foodMemoryRecall,
+ 
+       contactInputActivation:
+         activations[
+@@ -1200,6 +1478,12 @@ export function advanceM3AcquisitionTick(
+       exploreActivation:
+         decision.exploreActivation,
+ 
++      seekActionFeasible:
++        decision.seekActionFeasible,
++
++      eatActionFeasible:
++        decision.eatActionFeasible,
++
+       explorationHeadingBefore:
+         state.explorationState
+           .activeHeading,
+@@ -1234,6 +1518,8 @@ export function advanceM3AcquisitionTick(
+ 
+       seekMovementDirection,
+ 
++      seekDirectionSource,
++
+       directFoodPerceptionBefore:
+         directFoodPerceptionBefore
+           .foodSignal,
+@@ -1667,17 +1953,20 @@ export function assertM3AcquisitionStateShape(
+   }
+ 
+   /*
+-   * M3.2 locks memoryEnabled to false for the
+-   * authoritative acquisition state. A persisted
+-   * checkpoint claiming otherwise does not match
+-   * the contract this state was created under.
++   * M3.11R widens memoryEnabled to a genuine
++   * boolean so the ordinary browser Creature can
++   * enable M2 memory. The locked
++   * controlled-acquisition/standardized-probe
++   * contract still always produces false; this
++   * validator now accepts either value rather
++   * than only false.
+    */
+   if (
+-    value.memoryEnabled !==
+-    false
++    typeof value.memoryEnabled !==
++    "boolean"
+   ) {
+     throw new Error(
+-      "M3 acquisition memoryEnabled must be false.",
++      "M3 acquisition memoryEnabled must be a boolean.",
+     );
+   }
+ 
+@@ -1711,6 +2000,31 @@ export function assertM3AcquisitionStateShape(
+     );
+   }
+ 
++  /*
++   * foodMemory is a new field as of M3.11R.
++   * Earlier schema-1 M3 checkpoints predate it
++   * entirely, so `undefined` (the key was never
++   * present in the serialized JSON) is accepted
++   * as equivalent to null for backward
++   * compatibility, matching the same optional-
++   * field pattern already used for M1Episode's
++   * foodMemory. No schema version bump is
++   * required.
++   */
++  if (
++    value.foodMemory !==
++      undefined &&
++    value.foodMemory !==
++      null &&
++    !isFoodMemoryTrace(
++      value.foodMemory,
++    )
++  ) {
++    throw new Error(
++      "M3 acquisition food memory is invalid.",
++    );
++  }
++
+   if (
+     !isSensoryOccluderState(
+       value.sensoryOccluder,
+diff --git a/src/simulation/core/m3Probe.ts b/src/simulation/core/m3Probe.ts
+index 1607411..5fb83de 100644
+--- a/src/simulation/core/m3Probe.ts
++++ b/src/simulation/core/m3Probe.ts
+@@ -12,6 +12,7 @@ import {
+ } from "../brain/network.js";
+ 
+ import {
++  createM3Brain,
+   evaluateM3Brain,
+ } from "../brain/m3Brain.js";
+ 
+@@ -60,6 +61,12 @@ import {
+   M3_STANDARDIZED_PROBE,
+ } from "./m3Contract.js";
+ 
++export const M3_LEARNING_COMPARISON_FRESH_IDENTITY =
++  "m3-learning-comparison-fresh-equivalent" as const;
++
++export const M3_LEARNING_COMPARISON_CURRENT_IDENTITY =
++  "m3-learning-comparison-current-learned" as const;
++
+ export const M3_PROBE_IDENTITY_A =
+   "m3-probe-identity-a" as const;
+ 
+@@ -842,4 +849,99 @@ export function runM3IndividualityProbeExperiment():
+ 
+     identityBWithBranchAWeights,
+   };
++}
++
++/*
++ * M3.11R STANDARDIZED LEARNING COMPARISON
++ *
++ * A small READ-ONLY diagnostic that makes
++ * whether this Creature's learned neural state
++ * actually matters inspectable, without inventing
++ * a second probe mechanism.
++ *
++ * It runs the already-accepted
++ * runM3StandardizedProbe(...) exactly twice under
++ * the identical locked normalized conditions:
++ *
++ * - once with a genuinely fresh, unlearned M3
++ *   brain;
++ * - once with this Creature's current brain,
++ *   exactly as supplied.
++ *
++ * runM3StandardizedProbe(...) already normalizes
++ * position, hunger, food, perception, memory,
++ * eligibility, exploration and RNG and only ever
++ * constructs new BrainState objects internally
++ * (normalizeM3ProbeBrain/evaluateBrain never
++ * mutate their input). Calling it here therefore:
++ *
++ * - does not modify the running Creature's brain,
++ *   position, biology, memory, exploration state
++ *   or RNG;
++ * - does not rerun or alter the Creature's
++ *   acquisition history;
++ * - does not feed anything back into cognition;
++ * - consumes no authoritative simulation RNG.
++ *
++ * The comparison may truthfully show no
++ * difference. It must not be presented as
++ * guaranteeing one.
++ */
++export interface M3StandardizedLearningComparison {
++  readonly freshEquivalent:
++    M3StandardizedProbeResult;
++
++  readonly currentLearned:
++    M3StandardizedProbeResult;
++
++  readonly connectionWeightsDiffer:
++    boolean;
++
++  readonly selectedActionDiffers:
++    boolean;
++}
++
++export function runM3StandardizedLearningComparison(
++  currentBrain:
++    BrainState,
++): M3StandardizedLearningComparison {
++  const freshEquivalent =
++    runM3StandardizedProbe(
++      M3_LEARNING_COMPARISON_FRESH_IDENTITY,
++
++      createM3Brain(),
++    );
++
++  const currentLearned =
++    runM3StandardizedProbe(
++      M3_LEARNING_COMPARISON_CURRENT_IDENTITY,
++
++      currentBrain,
++    );
++
++  const connectionWeightsDiffer =
++    JSON.stringify(
++      freshEquivalent
++        .connectionWeights,
++    ) !==
++    JSON.stringify(
++      currentLearned
++        .connectionWeights,
++    );
++
++  const selectedActionDiffers =
++    freshEquivalent
++      .selectedActionId !==
++    currentLearned
++      .selectedActionId;
++
++  return {
++    freshEquivalent,
++
++    currentLearned,
++
++    connectionWeightsDiffer,
++
++    selectedActionDiffers,
++  };
+ }
+\ No newline at end of file
+diff --git a/src/ui/m3.css b/src/ui/m3.css
+index 58218ec..c89530e 100644
+--- a/src/ui/m3.css
++++ b/src/ui/m3.css
+@@ -190,7 +190,8 @@ select {
+ 
+ .m3-habitat-panel,
+ .m3-status-panel,
+-.m3-life-history-panel {
++.m3-life-history-panel,
++.m3-learning-check-panel {
+   border:
+     1px solid
+     rgba(
+@@ -227,7 +228,8 @@ select {
+ }
+ 
+ .m3-status-panel,
+-.m3-life-history-panel {
++.m3-life-history-panel,
++.m3-learning-check-panel {
+   margin-top:
+     14px;
+ 
+@@ -1064,6 +1066,108 @@ button.m3-status-card:not(:disabled):hover {
+     0.88rem;
+ }
+ 
++.m3-learning-check-summary {
++  cursor:
++    pointer;
++
++  font-weight:
++    700;
++
++  font-size:
++    0.82rem;
++
++  letter-spacing:
++    0.02em;
++
++  text-transform:
++    uppercase;
++
++  color:
++    #5b665f;
++
++  padding:
++    4px 0 12px;
++}
++
++.m3-learning-check-note {
++  margin:
++    0 0 12px;
++
++  color:
++    #5b665f;
++
++  font-size:
++    0.82rem;
++
++  line-height:
++    1.4;
++}
++
++.m3-learning-check-rows {
++  display:
++    flex;
++
++  flex-direction:
++    column;
++
++  gap:
++    8px;
++}
++
++.m3-learning-check-row {
++  display:
++    flex;
++
++  align-items:
++    baseline;
++
++  justify-content:
++    space-between;
++
++  gap:
++    12px;
++
++  padding:
++    9px 11px;
++
++  border:
++    1px solid
++    rgba(
++      41,
++      63,
++      53,
++      0.11
++    );
++
++  border-radius:
++    11px;
++
++  background:
++    #f4f8f2;
++}
++
++.m3-learning-check-row-label {
++  font-weight:
++    700;
++
++  font-size:
++    0.82rem;
++
++  color:
++    #4f6459;
++}
++
++.m3-learning-check-row-value {
++  font-variant-numeric:
++    tabular-nums;
++
++  font-size:
++    0.88rem;
++
++  text-align:
++    right;
++}
++
+ .m3-footer {
+   padding:
+     14px 4px 0;
+@@ -1217,7 +1321,8 @@ button.m3-status-card:not(:disabled):hover {
+ 
+   .m3-habitat-panel,
+   .m3-status-panel,
+-  .m3-life-history-panel {
++  .m3-life-history-panel,
++  .m3-learning-check-panel {
+     border-radius:
+       14px;
+ 
+@@ -1295,4 +1400,17 @@ button.m3-status-card:not(:disabled):hover {
+     gap:
+       3px;
+   }
++
++  .m3-learning-check-row {
++    flex-direction:
++      column;
++
++    gap:
++      3px;
++  }
++
++  .m3-learning-check-row-value {
++    text-align:
++      left;
++  }
+ }
+diff --git a/src/ui/m3Habitat.ts b/src/ui/m3Habitat.ts
+index 3a9e14a..51ed759 100644
+--- a/src/ui/m3Habitat.ts
++++ b/src/ui/m3Habitat.ts
+@@ -239,6 +239,17 @@ export function mountM3Habitat(
+             ></strong>
+           </article>
+ 
++          <article class="m3-status-card">
++            <span class="m3-status-key">
++              Food memory
++            </span>
++
++            <strong
++              class="m3-status-value"
++              data-m3-food-memory
++            ></strong>
++          </article>
++
+           <article class="m3-status-card">
+             <span class="m3-status-key">
+               Simulation time
+@@ -294,6 +305,12 @@ export function mountM3Habitat(
+         data-m3-life-history
+       ></section>
+ 
++      <section
++        class="m3-learning-check-panel"
++        aria-labelledby="m3-learning-check-title"
++        data-m3-learning-check
++      ></section>
++
+       <footer class="m3-footer">
+         M3.9B2 renders the real M3 simulation.
+       </footer>
+@@ -501,6 +518,15 @@ export function mountM3Habitat(
+     ),
+   );
+ 
++  setText(
++    root,
++    "[data-m3-food-memory]",
++    formatFoodMemoryState(
++      model.environment
++        .foodMemoryState,
++    ),
++  );
++
+   setText(
+     root,
+     "[data-m3-time]",
+@@ -656,6 +682,24 @@ function formatFoodPerceptionState(
+   }
+ }
+ 
++function formatFoodMemoryState(
++  state:
++    M3PresentationModel[
++      "environment"
++    ]["foodMemoryState"],
++): string {
++  switch (state) {
++    case "none":
++      return "None";
++
++    case "active":
++      return "Active";
++
++    case "decayed":
++      return "Decayed";
++  }
++}
++
+ function positionWorldElement(
+   element:
+     HTMLElement,
+diff --git a/src/ui/m3LearningCheckView.ts b/src/ui/m3LearningCheckView.ts
+new file mode 100644
+index 0000000..62d61e2
+--- /dev/null
++++ b/src/ui/m3LearningCheckView.ts
+@@ -0,0 +1,286 @@
++import type {
++  M3StandardizedLearningComparison,
++} from "../simulation/core/m3Probe.js";
++
++/*
++ * M3.11R STANDARDIZED LEARNING CHECK PRESENTATION
++ *
++ * This renders an already-computed, read-only
++ * M3StandardizedLearningComparison.
++ *
++ * It cannot:
++ *
++ * - run the comparison itself;
++ * - advance simulation;
++ * - modify the Creature's brain, biology,
++ *   memory, exploration state or RNG;
++ * - influence cognition, action competition or
++ *   learning.
++ *
++ * Wording stays strictly factual. It never
++ * claims the comparison is guaranteed to differ,
++ * and it never attributes intelligence,
++ * intent or emotion to either result.
++ *
++ * DIAGNOSTIC VISIBILITY (M3.11R correction)
++ *
++ * This is explicitly a developer diagnostic, not
++ * ordinary player-facing presentation. M3 human-
++ * evaluation Phase 1 requires developer
++ * diagnostics to be hidden initially, so this
++ * mounts inside a native <details> element that
++ * starts collapsed. The observer can reveal it
++ * later (Phase 3) with an ordinary disclosure
++ * click.
++ *
++ * Opening/closing is native browser <details>
++ * behaviour only: it consumes no RNG, advances no
++ * tick, and changes no cognition or simulation
++ * state. The caller (m3Main.ts's renderState())
++ * rebuilds the surrounding habitat DOM from scratch
++ * on every render (mountM3Habitat() resets
++ * root.innerHTML before this function runs), so a
++ * freshly created <details> element cannot itself
++ * remember whether an observer opened it on a
++ * previous render. A minimal module-level flag,
++ * mirrored onto every newly created element and
++ * updated only by the element's own native "toggle"
++ * event, is the smallest way to keep an observer's
++ * choice to reveal the panel from silently
++ * re-collapsing on the next tick. This flag is pure
++ * presentation state: it is private to this module,
++ * is never read by simulation code, and cannot
++ * influence cognition, action competition or
++ * learning.
++ */
++let diagnosticsPanelOpen =
++  false;
++
++export function mountM3LearningCheck(
++  root:
++    HTMLElement,
++
++  comparison:
++    M3StandardizedLearningComparison,
++): void {
++  const section =
++    requireElement(
++      root,
++      "[data-m3-learning-check]",
++    );
++
++  section.innerHTML =
++    "";
++
++  const details =
++    document.createElement(
++      "details",
++    );
++
++  details.className =
++    "m3-learning-check-details";
++
++  details.open =
++    diagnosticsPanelOpen;
++
++  details.addEventListener(
++    "toggle",
++    () => {
++      diagnosticsPanelOpen =
++        details.open;
++    },
++  );
++
++  const summary =
++    document.createElement(
++      "summary",
++    );
++
++  summary.className =
++    "m3-learning-check-summary";
++
++  summary.textContent =
++    "Diagnostics";
++
++  details.appendChild(
++    summary,
++  );
++
++  const heading =
++    document.createElement(
++      "div",
++    );
++
++  heading.className =
++    "m3-section-heading";
++
++  heading.innerHTML = `
++    <div>
++      <p class="m3-section-label">
++        Diagnostic
++      </p>
++
++      <h2>
++        Standardized learning check
++      </h2>
++    </div>
++  `;
++
++  details.appendChild(
++    heading,
++  );
++
++  const note =
++    document.createElement(
++      "p",
++    );
++
++  note.className =
++    "m3-learning-check-note";
++
++  note.textContent =
++    "Compares this Creature's current learned brain against a fresh, untrained equivalent under the same normalized conditions. This does not change the Creature.";
++
++  details.appendChild(
++    note,
++  );
++
++  const rows =
++    document.createElement(
++      "div",
++    );
++
++  rows.className =
++    "m3-learning-check-rows";
++
++  rows.appendChild(
++    renderRow(
++      "Fresh equivalent",
++      formatActionId(
++        comparison.freshEquivalent
++          .selectedActionId,
++      ),
++    ),
++  );
++
++  rows.appendChild(
++    renderRow(
++      "Current learned state",
++      formatActionId(
++        comparison.currentLearned
++          .selectedActionId,
++      ),
++    ),
++  );
++
++  rows.appendChild(
++    renderRow(
++      "Connection weights",
++      comparison.connectionWeightsDiffer
++        ? "Differ from a fresh brain"
++        : "Match a fresh brain",
++    ),
++  );
++
++  details.appendChild(
++    rows,
++  );
++
++  section.appendChild(
++    details,
++  );
++}
++
++function renderRow(
++  label:
++    string,
++
++  value:
++    string,
++): HTMLElement {
++  const row =
++    document.createElement(
++      "div",
++    );
++
++  row.className =
++    "m3-learning-check-row";
++
++  const labelElement =
++    document.createElement(
++      "span",
++    );
++
++  labelElement.className =
++    "m3-learning-check-row-label";
++
++  labelElement.textContent =
++    label;
++
++  const valueElement =
++    document.createElement(
++      "span",
++    );
++
++  valueElement.className =
++    "m3-learning-check-row-value";
++
++  valueElement.textContent =
++    value;
++
++  row.appendChild(
++    labelElement,
++  );
++
++  row.appendChild(
++    valueElement,
++  );
++
++  return row;
++}
++
++function formatActionId(
++  actionId:
++    string,
++): string {
++  switch (actionId) {
++    case "idle":
++      return "IDLE";
++
++    case "seek":
++      return "SEEK";
++
++    case "eat":
++      return "EAT";
++
++    case "explore":
++      return "EXPLORE";
++
++    default:
++      return actionId.toUpperCase();
++  }
++}
++
++function requireElement(
++  root:
++    HTMLElement,
++
++  selector:
++    string,
++): HTMLElement {
++  const element =
++    root.querySelector<HTMLElement>(
++      selector,
++    );
++
++  if (
++    element ===
++    null
++  ) {
++    throw new Error(
++      `M3 learning check view could not find ${selector}.`,
++    );
++  }
++
++  return element;
++}
+diff --git a/src/ui/m3Main.ts b/src/ui/m3Main.ts
+index c395688..b4b2f29 100644
+--- a/src/ui/m3Main.ts
++++ b/src/ui/m3Main.ts
+@@ -39,6 +39,14 @@ import {
+   mountM3LifeHistory,
+ } from "./m3LifeHistoryView.js";
+ 
++import {
++  runM3StandardizedLearningComparison,
++} from "../simulation/core/m3Probe.js";
++
++import {
++  mountM3LearningCheck,
++} from "./m3LearningCheckView.js";
++
+ /*
+  * M3 APPLICATION BOOTSTRAP
+  *
+@@ -155,6 +163,22 @@ function renderState(
+     root,
+     lifeHistory,
+   );
++
++  /*
++   * Read-only diagnostic. This never runs during
++   * an authoritative tick and never mutates the
++   * Creature; it only compares the already-
++   * evaluated current.brain against a fresh
++   * equivalent under the locked standardized
++   * probe.
++   */
++  mountM3LearningCheck(
++    root,
++
++    runM3StandardizedLearningComparison(
++      current.brain,
++    ),
++  );
+ }
+ 
+ controller =
+@@ -251,6 +275,13 @@ renderState(
+  * learning and exploration enabled, matching
+  * the committed M3.2 experimental contract.
+  * This is not a search for a prettier seed.
++ *
++ * M3.11R additionally enables M2 memory for the
++ * ordinary browser Creature only. The locked
++ * controlled acquisition experiment and
++ * standardized probe are untouched by this and
++ * continue to construct memory-disabled state
++ * through their own existing call sites.
+  */
+ function createInitialM3State():
+   M3AcquisitionState {
+@@ -264,6 +295,9 @@ function createInitialM3State():
+ 
+       explorationEnabled:
+         true,
++
++      memoryEnabled:
++        true,
+     },
+   );
+ }
+diff --git a/tests/unit/m3ActionLockLiveness.test.ts b/tests/unit/m3ActionLockLiveness.test.ts
+new file mode 100644
+index 0000000..75819c9
+--- /dev/null
++++ b/tests/unit/m3ActionLockLiveness.test.ts
+@@ -0,0 +1,733 @@
++import {
++  describe,
++  expect,
++  it,
++} from "vitest";
++
++import {
++  advanceM3AcquisitionTick,
++  createM3AcquisitionState,
++  type M3AcquisitionState,
++} from "../../src/simulation/core/m3Acquisition.js";
++
++import {
++  applyM3PlayerFoodPlacement,
++} from "../../src/simulation/core/m3PlayerWorld.js";
++
++import {
++  createM3Brain,
++} from "../../src/simulation/brain/m3Brain.js";
++
++import {
++  createHungerState,
++} from "../../src/simulation/biology/hunger.js";
++
++import {
++  M3_PRIMARY_BRANCH_A_SEED,
++} from "../../src/simulation/core/m3Contract.js";
++
++/*
++ * M3.11R ACTION-FEASIBILITY LIVENESS EVIDENCE
++ *
++ * Architecture review found that the original
++ * M3.11R patch documented, but wrongly accepted,
++ * a genuine persistent-play liveness defect: under
++ * continuous repeated legitimate feeding, ordinary
++ * reward-modulated plasticity (unchanged from M1)
++ * can strengthen a contact-independent connection
++ * (hunger-to-eat) until EAT's activation exceeds
++ * every other candidate even with no food in reach.
++ * An unsuccessful EAT produces no reward, so the
++ * weight freezes; hunger and exploration pressure
++ * stay saturated; the same physically unsupported
++ * action wins every tick forever.
++ *
++ * The correction adds an explicit action-feasibility
++ * gate to the generic M3 action competition
++ * (selectHighestActivation's optional `available`
++ * field, applied in evaluateM3Brain): SEEK is only
++ * feasible with a legitimate direction source
++ * (direct perception or usable M2 recall); EAT is
++ * only feasible with genuine food contact. Neither
++ * gate inspects hidden coordinates, IDs or renderer
++ * state, forces a fallback action, or hides the raw
++ * learned activation from telemetry.
++ *
++ * The tests below prove, using only the locked
++ * Branch A seed and existing accepted mechanics,
++ * that:
++ *
++ * 1. repeated legitimate feeding can still raise raw
++ *    EAT activation above every competing candidate;
++ * 2. without contact, eatActionFeasible is false and
++ *    EAT cannot win selection despite that raw
++ *    dominance;
++ * 3. with contact, eatActionFeasible is true and EAT
++ *    can still win and genuinely consume food;
++ * 4. after the exact historical repeated-feeding
++ *    sequence that previously produced a permanent
++ *    lock, the Creature continues to have legitimate
++ *    future action/movement opportunities rather than
++ *    remaining stationary forever;
++ * 5. SEEK cannot similarly monopolize the Creature
++ *    merely because a learned hunger-to-seek weight
++ *    becomes large, absent any legitimate direction
++ *    source;
++ * 6. SEEK remains normally competitive when a
++ *    legitimate direct-perception direction is
++ *    available.
++ *
++ * No locked seed, weight, learning rate or other M3
++ * constant is altered anywhere in this file. The
++ * boosted-weight fixtures in the SEEK section
++ * construct a standalone test brain object rather
++ * than tuning any locked production constant.
++ */
++
++/*
++ * Drives the exact historical sequence that
++ * previously produced a permanent EAT lock before
++ * this correction: three genuine player-relocated
++ * feeding cycles under the locked Branch A seed,
++ * driven exclusively through the existing
++ * authoritative tick transition and the existing
++ * accepted M3.8 player food-placement boundary.
++ */
++function driveHistoricalRepeatedFeedingSequence():
++  M3AcquisitionState {
++  let state: M3AcquisitionState =
++    createM3AcquisitionState({
++      seed:
++        M3_PRIMARY_BRANCH_A_SEED,
++
++      learningEnabled:
++        true,
++
++      explorationEnabled:
++        true,
++    });
++
++  const destinations = [
++    { x: 9.5, y: 9.5 },
++    { x: 0.5, y: 9.5 },
++    { x: 9.5, y: 0.5 },
++  ];
++
++  let eventSequence =
++    0;
++
++  let relocateIndex =
++    0;
++
++  for (
++    let safety = 0;
++    safety < 500 &&
++    relocateIndex <
++      destinations.length;
++    safety += 1
++  ) {
++    if (state.complete) {
++      const destination =
++        destinations[
++          relocateIndex
++        ];
++
++      if (
++        destination ===
++        undefined
++      ) {
++        throw new Error(
++          "Test fixture destination index out of range.",
++        );
++      }
++
++      const placement =
++        applyM3PlayerFoodPlacement(
++          state,
++
++          destination,
++
++          eventSequence,
++        );
++
++      eventSequence +=
++        1;
++
++      relocateIndex +=
++        1;
++
++      state =
++        placement.state;
++
++      continue;
++    }
++
++    state =
++      advanceM3AcquisitionTick(
++        state,
++      ).state;
++  }
++
++  if (
++    relocateIndex !==
++    destinations.length
++  ) {
++    throw new Error(
++      "Test fixture failed to drive the full historical feeding sequence.",
++    );
++  }
++
++  return state;
++}
++
++describe(
++  "M3.11R action-feasibility liveness correction",
++  () => {
++    describe(
++      "EAT feasibility",
++      () => {
++        it(
++          "lets repeated legitimate feeding raise raw EAT activation above every competing candidate, observably, even while infeasible",
++          () => {
++            let state =
++              driveHistoricalRepeatedFeedingSequence();
++
++            let sawInfeasibleEatDominant =
++              false;
++
++            for (
++              let tickCount = 0;
++              tickCount < 100 &&
++              !state.complete;
++              tickCount += 1
++            ) {
++              const result =
++                advanceM3AcquisitionTick(
++                  state,
++                );
++
++              state =
++                result.state;
++
++              const evidence =
++                result.evidence;
++
++              if (
++                evidence.eatActivation >
++                  evidence.idleActivation &&
++                evidence.eatActivation >
++                  evidence.seekActivation &&
++                evidence.eatActivation >
++                  evidence.exploreActivation &&
++                evidence.eatActionFeasible ===
++                  false
++              ) {
++                sawInfeasibleEatDominant =
++                  true;
++
++                break;
++              }
++            }
++
++            /*
++             * The learned raw EAT activation
++             * genuinely dominates every other
++             * candidate at least once. Feasibility
++             * does not hide or zero this value; it
++             * only withholds selection.
++             */
++            expect(
++              sawInfeasibleEatDominant,
++            ).toBe(
++              true,
++            );
++          },
++        );
++
++        it(
++          "never lets EAT win without contact, and the Creature keeps legitimate future action and movement opportunities after the historical repeated-feeding sequence",
++          () => {
++            let state =
++              driveHistoricalRepeatedFeedingSequence();
++
++            let sawGenuineDisplacement =
++              false;
++
++            let eatSelectedWithoutFeasibility =
++              0;
++
++            for (
++              let tickCount = 0;
++              tickCount < 300 &&
++              !state.complete;
++              tickCount += 1
++            ) {
++              const result =
++                advanceM3AcquisitionTick(
++                  state,
++                );
++
++              state =
++                result.state;
++
++              const evidence =
++                result.evidence;
++
++              if (
++                evidence.selectedActionId ===
++                  "eat" &&
++                !evidence.eatActionFeasible
++              ) {
++                eatSelectedWithoutFeasibility +=
++                  1;
++              }
++
++              if (
++                evidence.distanceMoved >
++                1e-9
++              ) {
++                sawGenuineDisplacement =
++                  true;
++              }
++            }
++
++            /*
++             * Structural guarantee: the generic
++             * competition never selects an
++             * unavailable candidate.
++             */
++            expect(
++              eatSelectedWithoutFeasibility,
++            ).toBe(
++              0,
++            );
++
++            /*
++             * This is the corrected outcome,
++             * directly reversing the previous
++             * "permanent lock is acceptable"
++             * finding: physical displacement
++             * resumes once EAT can no longer
++             * monopolize the ordinarily
++             * infeasible tick.
++             */
++            expect(
++              sawGenuineDisplacement,
++            ).toBe(
++              true,
++            );
++          },
++        );
++
++        it(
++          "confirms EAT becomes feasible and can still win and genuinely consume food once genuine contact exists",
++          () => {
++            /*
++             * A standalone test brain with an
++             * artificially boosted hunger-to-eat
++             * weight, mirroring the same real
++             * mechanism repeated legitimate feeding
++             * produces, but constructed directly so
++             * this proof does not depend on exactly
++             * how many ticks an emergent multi-tick
++             * sequence takes to reach the same
++             * point. This does not tune any locked
++             * production constant.
++             */
++            const baseBrain =
++              createM3Brain();
++
++            const boostedBrain = {
++              ...baseBrain,
++
++              connections:
++                baseBrain.connections.map(
++                  (connection) =>
++                    connection.id ===
++                    "hunger-to-eat"
++                      ? {
++                          ...connection,
++
++                          weight:
++                            0.95,
++                        }
++                      : connection,
++                ),
++            };
++
++            const base =
++              createM3AcquisitionState({
++                seed:
++                  M3_PRIMARY_BRANCH_A_SEED,
++
++                learningEnabled:
++                  false,
++
++                explorationEnabled:
++                  false,
++
++                brain:
++                  boostedBrain,
++              });
++
++            const zeroHunger =
++              createHungerState(
++                0,
++
++                base.hunger.maxEnergy,
++              );
++
++            /*
++             * Food far outside interaction range:
++             * raw EAT activation still dominates
++             * IDLE, but contact is absent.
++             */
++            const outOfRange: M3AcquisitionState = {
++              ...base,
++
++              hunger:
++                zeroHunger,
++
++              position: {
++                x: 0,
++                y: 0,
++              },
++
++              food: {
++                ...base.food,
++
++                position: {
++                  x: 9,
++                  y: 9,
++                },
++              },
++
++              sensoryOccluder: {
++                ...base.sensoryOccluder,
++
++                active:
++                  false,
++              },
++            };
++
++            const infeasibleResult =
++              advanceM3AcquisitionTick(
++                outOfRange,
++              );
++
++            expect(
++              infeasibleResult.evidence
++                .eatActivation,
++            ).toBeGreaterThan(
++              infeasibleResult.evidence
++                .idleActivation,
++            );
++
++            expect(
++              infeasibleResult.evidence
++                .contactInRange,
++            ).toBe(
++              false,
++            );
++
++            expect(
++              infeasibleResult.evidence
++                .eatActionFeasible,
++            ).toBe(
++              false,
++            );
++
++            expect(
++              infeasibleResult.evidence
++                .selectedActionId,
++            ).not.toBe(
++              "eat",
++            );
++
++            /*
++             * Identical brain and hunger, but the
++             * Creature now genuinely stands on the
++             * food: the same learned dominance is
++             * now feasible and must be allowed to
++             * win and actually consume food.
++             */
++            const inRange: M3AcquisitionState = {
++              ...base,
++
++              hunger:
++                zeroHunger,
++
++              position: {
++                x: 0,
++                y: 0,
++              },
++
++              food: {
++                ...base.food,
++
++                position: {
++                  x: 0,
++                  y: 0,
++                },
++              },
++
++              sensoryOccluder: {
++                ...base.sensoryOccluder,
++
++                active:
++                  false,
++              },
++            };
++
++            const feasibleResult =
++              advanceM3AcquisitionTick(
++                inRange,
++              );
++
++            expect(
++              feasibleResult.evidence
++                .contactInRange,
++            ).toBe(
++              true,
++            );
++
++            expect(
++              feasibleResult.evidence
++                .eatActionFeasible,
++            ).toBe(
++              true,
++            );
++
++            expect(
++              feasibleResult.evidence
++                .selectedActionId,
++            ).toBe(
++              "eat",
++            );
++
++            expect(
++              feasibleResult.evidence.ate,
++            ).toBe(
++              true,
++            );
++
++            expect(
++              feasibleResult.state.food
++                .consumed,
++            ).toBe(
++              true,
++            );
++
++            expect(
++              feasibleResult.state.hunger
++                .energy,
++            ).toBeGreaterThan(
++              0,
++            );
++          },
++        );
++      },
++    );
++
++    describe(
++      "SEEK feasibility",
++      () => {
++        it(
++          "prevents SEEK from winning merely because a learned hunger-to-seek weight is large, absent any legitimate direction source",
++          () => {
++            /*
++             * A standalone test brain with an
++             * artificially boosted hunger-to-seek
++             * weight, constructed only for this
++             * fixture. This does not tune any
++             * locked production constant; it
++             * demonstrates that raw activation
++             * dominance alone, without a legitimate
++             * direction source, still cannot win
++             * SEEK the competition.
++             */
++            const baseBrain =
++              createM3Brain();
++
++            const boostedBrain = {
++              ...baseBrain,
++
++              connections:
++                baseBrain.connections.map(
++                  (connection) =>
++                    connection.id ===
++                    "hunger-to-seek"
++                      ? {
++                          ...connection,
++
++                          weight:
++                            0.95,
++                        }
++                      : connection,
++                ),
++            };
++
++            const base =
++              createM3AcquisitionState({
++                seed:
++                  M3_PRIMARY_BRANCH_A_SEED,
++
++                learningEnabled:
++                  false,
++
++                explorationEnabled:
++                  true,
++
++                brain:
++                  boostedBrain,
++              });
++
++            /*
++             * Maximum hunger, and the locked
++             * acquisition occluder remains active
++             * by default, so no direct perception
++             * and (memoryEnabled defaults to false)
++             * no recall are available this tick.
++             */
++            const state: M3AcquisitionState = {
++              ...base,
++
++              hunger:
++                createHungerState(
++                  0,
++
++                  base.hunger.maxEnergy,
++                ),
++            };
++
++            expect(
++              state.sensoryOccluder.active,
++            ).toBe(
++              true,
++            );
++
++            const result =
++              advanceM3AcquisitionTick(
++                state,
++              );
++
++            expect(
++              result.evidence
++                .directFoodPerceptionBefore,
++            ).toBeNull();
++
++            expect(
++              result.evidence
++                .seekActivation,
++            ).toBeGreaterThan(
++              result.evidence
++                .idleActivation,
++            );
++
++            expect(
++              result.evidence
++                .seekActionFeasible,
++            ).toBe(
++              false,
++            );
++
++            expect(
++              result.evidence
++                .selectedActionId,
++            ).not.toBe(
++              "seek",
++            );
++
++            expect(
++              result.evidence
++                .distanceMoved,
++            ).toBe(
++              0,
++            );
++
++            expect(
++              result.state.position,
++            ).toEqual(
++              state.position,
++            );
++          },
++        );
++
++        it(
++          "keeps SEEK normally competitive when a legitimate direct-perception direction is available",
++          () => {
++            const base =
++              createM3AcquisitionState({
++                seed:
++                  M3_PRIMARY_BRANCH_A_SEED,
++
++                learningEnabled:
++                  true,
++
++                explorationEnabled:
++                  false,
++              });
++
++            const state: M3AcquisitionState = {
++              ...base,
++
++              food: {
++                ...base.food,
++
++                position: {
++                  x: 3,
++                  y: 0,
++                },
++              },
++
++              sensoryOccluder: {
++                ...base.sensoryOccluder,
++
++                active:
++                  false,
++              },
++            };
++
++            const result =
++              advanceM3AcquisitionTick(
++                state,
++              );
++
++            expect(
++              result.evidence
++                .directFoodPerceptionBefore,
++            ).not.toBeNull();
++
++            expect(
++              result.evidence
++                .seekActionFeasible,
++            ).toBe(
++              true,
++            );
++
++            expect(
++              result.evidence
++                .selectedActionId,
++            ).toBe(
++              "seek",
++            );
++
++            expect(
++              result.evidence
++                .seekDirectionSource,
++            ).toBe(
++              "direct-perception",
++            );
++
++            expect(
++              result.evidence
++                .distanceMoved,
++            ).toBeGreaterThan(
++              0,
++            );
++          },
++        );
++      },
++    );
++  },
++);
+diff --git a/tests/unit/m3MemoryIntegration.test.ts b/tests/unit/m3MemoryIntegration.test.ts
+new file mode 100644
+index 0000000..13db72f
+--- /dev/null
++++ b/tests/unit/m3MemoryIntegration.test.ts
+@@ -0,0 +1,1380 @@
++import {
++  describe,
++  expect,
++  it,
++} from "vitest";
++
++import {
++  advanceM3AcquisitionTick,
++  createM3AcquisitionState,
++  deserializeM3AcquisitionState,
++  runM3AcquisitionBranch,
++  serializeM3AcquisitionState,
++  type M3AcquisitionState,
++} from "../../src/simulation/core/m3Acquisition.js";
++
++import {
++  applyM3PlayerFoodPlacement,
++} from "../../src/simulation/core/m3PlayerWorld.js";
++
++import {
++  deriveM3DirectFoodPerception,
++} from "../../src/simulation/core/m3Discovery.js";
++
++import {
++  runM3StandardizedLearningComparison,
++} from "../../src/simulation/core/m3Probe.js";
++
++import {
++  createM3Brain,
++} from "../../src/simulation/brain/m3Brain.js";
++
++import {
++  createHungerState,
++} from "../../src/simulation/biology/hunger.js";
++
++import {
++  FOOD_MEMORY_MIN_RECALL_CONFIDENCE,
++} from "../../src/simulation/memory/foodMemory.js";
++
++import {
++  M3_ACQUISITION_OCCLUDER,
++  M3_HIDDEN_TARGET_ALTERNATE_FOOD,
++  M3_PRIMARY_BRANCH_A_SEED,
++} from "../../src/simulation/core/m3Contract.js";
++
++function createMemoryDisabledState():
++  M3AcquisitionState {
++  return createM3AcquisitionState({
++    seed:
++      M3_PRIMARY_BRANCH_A_SEED,
++
++    learningEnabled:
++      true,
++
++    explorationEnabled:
++      true,
++  });
++}
++
++function createMemoryEnabledState():
++  M3AcquisitionState {
++  return createM3AcquisitionState({
++    seed:
++      M3_PRIMARY_BRANCH_A_SEED,
++
++    learningEnabled:
++      true,
++
++    explorationEnabled:
++      true,
++
++    memoryEnabled:
++      true,
++  });
++}
++
++/*
++ * Small unoccluded scenario used by several
++ * tests below: food placed directly in front of
++ * the Creature, no occluder in the way, so
++ * direct perception is legitimately available
++ * from tick 0 without depending on autonomous
++ * exploration to discover it.
++ */
++function createDirectlyVisibleState(
++  memoryEnabled:
++    boolean,
++): M3AcquisitionState {
++  const base =
++    createM3AcquisitionState({
++      seed:
++        M3_PRIMARY_BRANCH_A_SEED,
++
++      learningEnabled:
++        true,
++
++      explorationEnabled:
++        false,
++
++      memoryEnabled,
++    });
++
++  return {
++    ...base,
++
++    food: {
++      ...base.food,
++
++      position: {
++        x: 3,
++        y: 0,
++      },
++    },
++
++    sensoryOccluder: {
++      ...base.sensoryOccluder,
++
++      active:
++        false,
++    },
++  };
++}
++
++describe(
++  "M3.11R memory integration",
++  () => {
++    it(
++      "keeps the controlled acquisition experiment memory-disabled by default",
++      () => {
++        const state =
++          createMemoryDisabledState();
++
++        expect(
++          state.memoryEnabled,
++        ).toBe(
++          false,
++        );
++
++        expect(
++          state.foodMemory,
++        ).toBeNull();
++
++        const branch =
++          runM3AcquisitionBranch({
++            seed:
++              M3_PRIMARY_BRANCH_A_SEED,
++
++            learningEnabled:
++              true,
++
++            explorationEnabled:
++              true,
++          });
++
++        for (
++          const round of
++          branch.rounds
++        ) {
++          expect(
++            round.finalState
++              .memoryEnabled,
++          ).toBe(
++            false,
++          );
++
++          expect(
++            round.finalState
++              .foodMemory,
++          ).toBeNull();
++
++          for (
++            const tick of
++            round.ticks
++          ) {
++            expect(
++              tick.activeFoodMemoryPresent,
++            ).toBe(
++              false,
++            );
++
++            expect(
++              tick.foodMemoryRecall,
++            ).toBeNull();
++          }
++        }
++      },
++    );
++
++    it(
++      "allows the ordinary browser Creature to construct memory-enabled state",
++      () => {
++        const state =
++          createMemoryEnabledState();
++
++        expect(
++          state.memoryEnabled,
++        ).toBe(
++          true,
++        );
++
++        expect(
++          state.foodMemory,
++        ).toBeNull();
++      },
++    );
++
++    it(
++      "encodes memory only from legitimate direct perception",
++      () => {
++        const state =
++          createDirectlyVisibleState(
++            true,
++          );
++
++        const result =
++          advanceM3AcquisitionTick(
++            state,
++          );
++
++        expect(
++          result.evidence
++            .directFoodPerceptionBefore,
++        ).not.toBeNull();
++
++        expect(
++          result.state.foodMemory,
++        ).not.toBeNull();
++
++        expect(
++          result.state.foodMemory
++            ?.sourceFoodId,
++        ).toBe(
++          state.food.id,
++        );
++
++        expect(
++          result.state.foodMemory
++            ?.rememberedDirectionX,
++        ).toBeCloseTo(
++          result.evidence
++            .directFoodPerceptionBefore
++            ?.directionX ??
++            Number.NaN,
++        );
++      },
++    );
++
++    it(
++      "does not update memory when relocated food remains hidden from perception",
++      () => {
++        /*
++         * Locked acquisition food starts behind
++         * the real occluder, so it has never been
++         * directly perceived. Relocating it to
++         * another hidden location must not create
++         * or change any memory trace.
++         */
++        const state =
++          createMemoryEnabledState();
++
++        expect(
++          state.foodMemory,
++        ).toBeNull();
++
++        const placement =
++          applyM3PlayerFoodPlacement(
++            state,
++
++            {
++              x:
++                M3_HIDDEN_TARGET_ALTERNATE_FOOD.x,
++
++              y:
++                M3_HIDDEN_TARGET_ALTERNATE_FOOD.y,
++            },
++
++            0,
++          );
++
++        expect(
++          placement.state.foodMemory,
++        ).toBeNull();
++
++        const result =
++          advanceM3AcquisitionTick(
++            placement.state,
++          );
++
++        expect(
++          result.evidence
++            .directFoodPerceptionBefore,
++        ).toBeNull();
++
++        expect(
++          result.state.foodMemory,
++        ).toBeNull();
++      },
++    );
++
++    it(
++      "keeps stale recall wrong after hidden food relocation within valid habitat bounds, then corrects it once legitimately re-perceived",
++      () => {
++        /*
++         * Mirrors the accepted M2.6/M2.7
++         * stale-memory and correction
++         * adversarial cases at the M3
++         * integration boundary.
++         *
++         * Both the original and relocated food
++         * positions, and the Creature itself,
++         * stay strictly within the locked
++         * [0, 10] x [0, 10] M3 habitat bounds
++         * (M3_HABITAT_BOUNDS) throughout: an
++         * authoritative world state outside those
++         * bounds is not valid acceptance evidence.
++         *
++         * Hunger is held at maximum energy (zero
++         * hunger) throughout so that direct-
++         * perception-driven SEEK activation
++         * (strength 0.7 at distance 3, weight 0.3,
++         * contributing 0.21) never beats the
++         * locked 0.35 IDLE bias on its own. This
++         * isolates pure memory encode/stale/
++         * correction behaviour from any
++         * confounding movement.
++         */
++        const base =
++          createMemoryEnabledState();
++
++        const zeroHunger =
++          createHungerState(
++            base.hunger.maxEnergy,
++            base.hunger.maxEnergy,
++          );
++
++        let state: M3AcquisitionState = {
++          ...base,
++
++          position: {
++            x: 5,
++            y: 0,
++          },
++
++          hunger:
++            zeroHunger,
++
++          food: {
++            ...base.food,
++
++            position: {
++              x: 8,
++              y: 0,
++            },
++          },
++
++          sensoryOccluder: {
++            ...base.sensoryOccluder,
++
++            active:
++              false,
++          },
++        };
++
++        const firstTick =
++          advanceM3AcquisitionTick(
++            state,
++          );
++
++        expect(
++          firstTick.state.position,
++        ).toEqual(
++          state.position,
++        );
++
++        const originalDirectionX =
++          firstTick.state.foodMemory
++            ?.rememberedDirectionX ??
++          Number.NaN;
++
++        expect(
++          originalDirectionX,
++        ).toBeGreaterThan(
++          0,
++        );
++
++        /*
++         * Relocate the same food to the west,
++         * still within bounds (x = 2), and place a
++         * genuine occluder between the stationary
++         * Creature (x = 5) and the new food
++         * position so it is never legitimately
++         * re-perceived yet.
++         */
++        state = {
++          ...firstTick.state,
++
++          food: {
++            ...firstTick.state.food,
++
++            position: {
++              x: 2,
++              y: 0,
++            },
++          },
++
++          sensoryOccluder: {
++            ...firstTick.state
++              .sensoryOccluder,
++
++            active:
++              true,
++
++            x: 3.5,
++
++            minY: -1,
++
++            maxY: 1,
++          },
++        };
++
++        expect(
++          deriveM3DirectFoodPerception(
++            state.position,
++            state.food,
++            state.sensoryOccluder,
++          ).occluded,
++        ).toBe(
++          true,
++        );
++
++        const staleTick =
++          advanceM3AcquisitionTick(
++            state,
++          );
++
++        expect(
++          staleTick.evidence
++            .directFoodPerceptionBefore,
++        ).toBeNull();
++
++        expect(
++          staleTick.state.position,
++        ).toEqual(
++          state.position,
++        );
++
++        /*
++         * The retained trace still represents the
++         * original (now wrong) eastward direction.
++         */
++        expect(
++          staleTick.state.foodMemory
++            ?.rememberedDirectionX,
++        ).toBeCloseTo(
++          originalDirectionX,
++        );
++
++        /*
++         * Legitimate re-perception (occluder
++         * removed) corrects the trace to the
++         * genuine westward direction.
++         */
++        const revealed = {
++          ...staleTick.state,
++
++          sensoryOccluder: {
++            ...staleTick.state
++              .sensoryOccluder,
++
++            active:
++              false,
++          },
++        };
++
++        const correctedTick =
++          advanceM3AcquisitionTick(
++            revealed,
++          );
++
++        expect(
++          correctedTick.evidence
++            .directFoodPerceptionBefore,
++        ).not.toBeNull();
++
++        expect(
++          correctedTick.state.foodMemory
++            ?.rememberedDirectionX,
++        ).toBeLessThan(
++          0,
++        );
++      },
++    );
++
++    it(
++      "lets recall enter normal M3 neural competition without directly commanding SEEK",
++      () => {
++        /*
++         * A stored trace with moderate confidence
++         * but a fully-fed Creature (hunger = 0)
++         * produces too little combined SEEK
++         * activation to beat the locked 0.35 IDLE
++         * bias, so IDLE must still win even though
++         * recall is genuinely active. Movement
++         * therefore does not occur despite a valid
++         * recall signal being supplied to
++         * cognition.
++         */
++        const base =
++          createMemoryEnabledState();
++
++        /*
++         * advanceFoodMemory(...) recomputes
++         * confidence deterministically from
++         * (simulationTimeSeconds -
++         * encodedAtSimulationTimeSeconds) rather
++         * than trusting a stored confidence/age
++         * value, so this fixture advances the
++         * state's own simulation time forward by
++         * 4 seconds past encoding to genuinely
++         * reach confidence 0.5 (1.0 - 0.125 * 4)
++         * through the real decay computation.
++         */
++        const state: M3AcquisitionState = {
++          ...base,
++
++          simulationTimeSeconds:
++            4,
++
++          hunger:
++            createHungerState(
++              base.hunger.maxEnergy,
++              base.hunger.maxEnergy,
++            ),
++
++          foodMemory: {
++            schemaVersion:
++              1,
++
++            kind:
++              "food-memory",
++
++            source:
++              "food-perception",
++
++            sourceFoodId:
++              base.food.id,
++
++            encodedAtSimulationTimeSeconds:
++              0,
++
++            ageSeconds:
++              4,
++
++            confidence:
++              0.5,
++
++            rememberedDirectionX:
++              1,
++
++            rememberedDirectionY:
++              0,
++
++            rememberedPerceptualStrength:
++              0.5,
++          },
++
++          sensoryOccluder: {
++            ...base.sensoryOccluder,
++
++            active:
++              true,
++          },
++        };
++
++        const result =
++          advanceM3AcquisitionTick(
++            state,
++          );
++
++        expect(
++          result.evidence
++            .activeFoodMemoryPresent,
++        ).toBe(
++          true,
++        );
++
++        expect(
++          result.evidence
++            .rememberedFoodInputActivation,
++        ).toBeCloseTo(
++          0.25,
++        );
++
++        expect(
++          result.evidence
++            .selectedActionId,
++        ).toBe(
++          "idle",
++        );
++
++        expect(
++          result.evidence
++            .seekDirectionSource,
++        ).toBeNull();
++
++        expect(
++          result.state.position,
++        ).toEqual(
++          state.position,
++        );
++      },
++    );
++
++    it(
++      "moves from recall only after SEEK genuinely wins competition",
++      () => {
++        /*
++         * Same stored trace as above, but now the
++         * Creature is maximally hungry so recall
++         * alone can push SEEK above the IDLE
++         * bias and legitimately win.
++         */
++        const base =
++          createMemoryEnabledState();
++
++        const state: M3AcquisitionState = {
++          ...base,
++
++          hunger:
++            createHungerState(
++              0,
++
++              base.hunger.maxEnergy,
++            ),
++
++          foodMemory: {
++            schemaVersion:
++              1,
++
++            kind:
++              "food-memory",
++
++            source:
++              "food-perception",
++
++            sourceFoodId:
++              base.food.id,
++
++            encodedAtSimulationTimeSeconds:
++              0,
++
++            ageSeconds:
++              1,
++
++            confidence:
++              1,
++
++            rememberedDirectionX:
++              1,
++
++            rememberedDirectionY:
++              0,
++
++            rememberedPerceptualStrength:
++              1,
++          },
++
++          sensoryOccluder: {
++            ...base.sensoryOccluder,
++
++            active:
++              true,
++          },
++        };
++
++        const result =
++          advanceM3AcquisitionTick(
++            state,
++          );
++
++        expect(
++          result.evidence
++            .selectedActionId,
++        ).toBe(
++          "seek",
++        );
++
++        expect(
++          result.evidence
++            .seekDirectionSource,
++        ).toBe(
++          "memory-recall",
++        );
++
++        expect(
++          result.evidence
++            .movementSource,
++        ).toBe(
++          "seek",
++        );
++
++        expect(
++          result.state.position.x,
++        ).toBeGreaterThan(
++          state.position.x,
++        );
++      },
++    );
++
++    it(
++      "gives current direct perception priority over recall for SEEK direction",
++      () => {
++        /*
++         * Direct perception this tick points in
++         * the opposite direction from a stale
++         * retained trace. Recall is never even
++         * computed while direct perception exists
++         * (it is only exposed when direct
++         * perception is absent), so movement must
++         * follow the fresh direct evidence.
++         */
++        const base =
++          createMemoryEnabledState();
++
++        /*
++         * Positions stay within the locked
++         * [0, 10] habitat bounds: the Creature
++         * starts at x = 5, direct food sits at
++         * x = 2 (a westward/negative direction),
++         * while the stale retained trace claims
++         * an eastward/positive direction.
++         */
++        const state: M3AcquisitionState = {
++          ...base,
++
++          position: {
++            x: 5,
++            y: 0,
++          },
++
++          food: {
++            ...base.food,
++
++            position: {
++              x: 2,
++              y: 0,
++            },
++          },
++
++          hunger:
++            createHungerState(
++              0,
++
++              base.hunger.maxEnergy,
++            ),
++
++          foodMemory: {
++            schemaVersion:
++              1,
++
++            kind:
++              "food-memory",
++
++            source:
++              "food-perception",
++
++            sourceFoodId:
++              base.food.id,
++
++            encodedAtSimulationTimeSeconds:
++              0,
++
++            ageSeconds:
++              1,
++
++            confidence:
++              1,
++
++            rememberedDirectionX:
++              1,
++
++            rememberedDirectionY:
++              0,
++
++            rememberedPerceptualStrength:
++              1,
++          },
++
++          sensoryOccluder: {
++            ...base.sensoryOccluder,
++
++            active:
++              false,
++          },
++        };
++
++        const result =
++          advanceM3AcquisitionTick(
++            state,
++          );
++
++        expect(
++          result.evidence
++            .directFoodPerceptionBefore,
++        ).not.toBeNull();
++
++        expect(
++          result.evidence
++            .foodMemoryRecall,
++        ).toBeNull();
++
++        expect(
++          result.evidence
++            .selectedActionId,
++        ).toBe(
++          "seek",
++        );
++
++        expect(
++          result.evidence
++            .seekDirectionSource,
++        ).toBe(
++          "direct-perception",
++        );
++
++        expect(
++          result.evidence
++            .seekMovementDirection
++            ?.x,
++        ).toBeLessThan(
++          0,
++        );
++
++        expect(
++          result.state.position.x,
++        ).toBeLessThan(
++          state.position.x,
++        );
++      },
++    );
++
++    it(
++      "decays and eventually expires memory deterministically once direct perception is lost",
++      () => {
++        /*
++         * Hunger is held at maximum energy (zero
++         * hunger) so that recall alone can never
++         * out-activate the locked IDLE bias
++         * during this observation window. This
++         * isolates pure memory decay/expiration
++         * from any confounding SEEK movement.
++         */
++        const base =
++          createDirectlyVisibleState(
++            true,
++          );
++
++        const state: M3AcquisitionState = {
++          ...base,
++
++          hunger:
++            createHungerState(
++              base.hunger.maxEnergy,
++              base.hunger.maxEnergy,
++            ),
++        };
++
++        const perceived =
++          advanceM3AcquisitionTick(
++            state,
++          ).state;
++
++        expect(
++          perceived.foodMemory,
++        ).not.toBeNull();
++
++        expect(
++          perceived.position,
++        ).toEqual(
++          state.position,
++        );
++
++        /*
++         * Re-occlude so no further direct
++         * perception refreshes the trace, then
++         * let it age until it expires. The locked
++         * M2 decay contract expires a trace once
++         * confidence falls below 0.25, which
++         * occurs at exactly 7 simulated seconds of
++         * age at the locked 0.125/second decay
++         * rate (age 6 -> confidence 0.25, still
++         * usable; age 7 -> confidence 0.125,
++         * expired).
++         */
++        /*
++         * The occluder must genuinely sit on the
++         * line of sight between the (stationary)
++         * Creature at x = 0 and the food at
++         * x = 3, so it is placed at x = 1.5
++         * rather than reusing the locked
++         * acquisition occluder's x = 4 (which
++         * would sit beyond the food and therefore
++         * block nothing).
++         */
++        let current: M3AcquisitionState = {
++          ...perceived,
++
++          sensoryOccluder: {
++            ...perceived.sensoryOccluder,
++
++            active:
++              true,
++
++            x: 1.5,
++
++            minY: -1,
++
++            maxY: 1,
++          },
++        };
++
++        expect(
++          deriveM3DirectFoodPerception(
++            current.position,
++            current.food,
++            current.sensoryOccluder,
++          ).occluded,
++        ).toBe(
++          true,
++        );
++
++        for (
++          let tickCount = 0;
++          tickCount < 7;
++          tickCount += 1
++        ) {
++          current =
++            advanceM3AcquisitionTick(
++              current,
++            ).state;
++        }
++
++        expect(
++          current.foodMemory,
++        ).toBeNull();
++
++        expect(
++          current.position,
++        ).toEqual(
++          perceived.position,
++        );
++      },
++    );
++
++    it(
++      "survives meaningful serialization and continues identically after reload",
++      () => {
++        const state =
++          createDirectlyVisibleState(
++            true,
++          );
++
++        const perceived =
++          advanceM3AcquisitionTick(
++            state,
++          ).state;
++
++        expect(
++          perceived.foodMemory,
++        ).not.toBeNull();
++
++        const serialized =
++          serializeM3AcquisitionState(
++            perceived,
++          );
++
++        const restored =
++          deserializeM3AcquisitionState(
++            serialized,
++          );
++
++        expect(
++          restored,
++        ).toEqual(
++          perceived,
++        );
++
++        const occluded: M3AcquisitionState = {
++          ...perceived,
++
++          sensoryOccluder: {
++            ...perceived.sensoryOccluder,
++
++            active:
++              true,
++
++            x: 0,
++
++            minY: -10,
++
++            maxY: 10,
++          },
++        };
++
++        const restoredOccluded: M3AcquisitionState = {
++          ...restored,
++
++          sensoryOccluder: {
++            ...restored.sensoryOccluder,
++
++            active:
++              true,
++
++            x: 0,
++
++            minY: -10,
++
++            maxY: 10,
++          },
++        };
++
++        const continuedFromOriginal =
++          advanceM3AcquisitionTick(
++            occluded,
++          );
++
++        const continuedFromRestored =
++          advanceM3AcquisitionTick(
++            restoredOccluded,
++          );
++
++        expect(
++          continuedFromRestored.state,
++        ).toEqual(
++          continuedFromOriginal.state,
++        );
++
++        expect(
++          continuedFromRestored.evidence,
++        ).toEqual(
++          continuedFromOriginal.evidence,
++        );
++      },
++    );
++
++    it(
++      "accepts earlier schema-1 M3 checkpoints that predate the foodMemory field",
++      () => {
++        const state =
++          createMemoryDisabledState();
++
++        const serialized =
++          serializeM3AcquisitionState(
++            state,
++          );
++
++        const legacyShaped =
++          JSON.parse(
++            serialized,
++          ) as Record<
++            string,
++            unknown
++          >;
++
++        /*
++         * Simulate a genuinely pre-M3.11R
++         * checkpoint: the foodMemory key never
++         * existed in the serialized JSON at all.
++         */
++        delete legacyShaped.foodMemory;
++
++        const legacySerialized =
++          JSON.stringify(
++            legacyShaped,
++          );
++
++        const restored =
++          deserializeM3AcquisitionState(
++            legacySerialized,
++          );
++
++        expect(
++          restored.memoryEnabled,
++        ).toBe(
++          false,
++        );
++
++        expect(() =>
++          advanceM3AcquisitionTick(
++            restored,
++          ),
++        ).not.toThrow();
++      },
++    );
++
++    it(
++      "keeps learning identical whether memory is enabled or disabled when recall never actually activates",
++      () => {
++        /*
++         * With food always directly visible,
++         * recall is never exposed to cognition in
++         * either branch (recall only participates
++         * while direct perception is absent), so
++         * the two configurations must produce
++         * byte-identical learning outcomes.
++         */
++        const withMemory =
++          createDirectlyVisibleState(
++            true,
++          );
++
++        const withoutMemory =
++          createDirectlyVisibleState(
++            false,
++          );
++
++        const resultWithMemory =
++          advanceM3AcquisitionTick(
++            withMemory,
++          );
++
++        const resultWithoutMemory =
++          advanceM3AcquisitionTick(
++            withoutMemory,
++          );
++
++        expect(
++          resultWithMemory.state.brain,
++        ).toEqual(
++          resultWithoutMemory.state
++            .brain,
++        );
++
++        expect(
++          resultWithMemory.state
++            .weightChanges,
++        ).toEqual(
++          resultWithoutMemory.state
++            .weightChanges,
++        );
++
++        expect(
++          resultWithMemory.evidence
++            .selectedActionId,
++        ).toBe(
++          resultWithoutMemory.evidence
++            .selectedActionId,
++        );
++      },
++    );
++
++    it(
++      "keeps exploration target-independent regardless of whether memory is enabled",
++      () => {
++        /*
++         * Before any legitimate perception has
++         * ever occurred there is nothing to
++         * recall, so enabling memory must not
++         * change autonomous exploratory action,
++         * heading or movement at all relative to
++         * the identical memory-disabled run.
++         */
++        let withMemory =
++          createMemoryEnabledState();
++
++        let withoutMemory =
++          createMemoryDisabledState();
++
++        for (
++          let tickCount = 0;
++          tickCount < 6;
++          tickCount += 1
++        ) {
++          const resultWithMemory =
++            advanceM3AcquisitionTick(
++              withMemory,
++            );
++
++          const resultWithoutMemory =
++            advanceM3AcquisitionTick(
++              withoutMemory,
++            );
++
++          expect(
++            resultWithMemory.evidence
++              .selectedActionId,
++          ).toBe(
++            resultWithoutMemory
++              .evidence
++              .selectedActionId,
++          );
++
++          expect(
++            resultWithMemory.state
++              .position,
++          ).toEqual(
++            resultWithoutMemory.state
++              .position,
++          );
++
++          expect(
++            resultWithMemory.state
++              .explorationState,
++          ).toEqual(
++            resultWithoutMemory.state
++              .explorationState,
++          );
++
++          withMemory =
++            resultWithMemory.state;
++
++          withoutMemory =
++            resultWithoutMemory.state;
++        }
++      },
++    );
++
++    it(
++      "runs the standardized learning comparison as a read-only observer that cannot mutate the running Creature",
++      () => {
++        const creature =
++          createDirectlyVisibleState(
++            true,
++          );
++
++        const advanced =
++          advanceM3AcquisitionTick(
++            creature,
++          ).state;
++
++        const brainBeforeSnapshot =
++          JSON.stringify(
++            advanced.brain,
++          );
++
++        const rngBeforeSnapshot =
++          JSON.stringify(
++            advanced.rngState,
++          );
++
++        const stateBeforeSnapshot =
++          JSON.stringify(
++            advanced,
++          );
++
++        const comparison =
++          runM3StandardizedLearningComparison(
++            advanced.brain,
++          );
++
++        expect(
++          JSON.stringify(
++            advanced.brain,
++          ),
++        ).toBe(
++          brainBeforeSnapshot,
++        );
++
++        expect(
++          JSON.stringify(
++            advanced.rngState,
++          ),
++        ).toBe(
++          rngBeforeSnapshot,
++        );
++
++        expect(
++          JSON.stringify(
++            advanced,
++          ),
++        ).toBe(
++          stateBeforeSnapshot,
++        );
++
++        expect(
++          comparison.freshEquivalent
++            .connectionWeights,
++        ).toEqual(
++          Object.fromEntries(
++            createM3Brain()
++              .connections.map(
++                (connection) => [
++                  connection.id,
++                  connection.weight,
++                ],
++              ),
++          ),
++        );
++
++        /*
++         * Deterministic and reproducible: the
++         * same input produces the same result,
++         * confirming no hidden RNG consumption
++         * or ordering dependency.
++         */
++        const secondComparison =
++          runM3StandardizedLearningComparison(
++            advanced.brain,
++          );
++
++        expect(
++          secondComparison,
++        ).toEqual(
++          comparison,
++        );
++      },
++    );
++
++    it(
++      "keeps the standardized probe metric response consistent with the locked M3.7 individuality contract while memory-disabled",
++      () => {
++        /*
++         * The controlled acquisition experiment
++         * and standardized probe are entirely
++         * unaffected by M3.11R; every branch
++         * still runs with foodMemory permanently
++         * null.
++         */
++        const branch =
++          runM3AcquisitionBranch({
++            seed:
++              M3_PRIMARY_BRANCH_A_SEED,
++
++            learningEnabled:
++              true,
++
++            explorationEnabled:
++              true,
++          });
++
++        expect(
++          branch.finalBrain,
++        ).toBeDefined();
++
++        for (
++          const round of
++          branch.rounds
++        ) {
++          expect(
++            round.finalState
++              .foodMemory,
++          ).toBeNull();
++        }
++      },
++    );
++  },
++);
++
++/*
++ * Sanity guard: the locked M2 minimum recall
++ * confidence constant used to construct the
++ * synthetic traces above must remain the value
++ * these hand-built test fixtures assume.
++ */
++describe(
++  "M3.11R memory fixture assumptions",
++  () => {
++    it(
++      "assumes the locked minimum recall confidence used to build test fixtures",
++      () => {
++        expect(
++          FOOD_MEMORY_MIN_RECALL_CONFIDENCE,
++        ).toBe(
++          0.25,
++        );
++      },
++    );
++
++    it(
++      "assumes the acquisition occluder starting geometry used to build occluded fixtures",
++      () => {
++        expect(
++          M3_ACQUISITION_OCCLUDER.active,
++        ).toBe(
++          true,
++        );
++      },
++    );
++  },
++);
+-- 
+2.43.0
+

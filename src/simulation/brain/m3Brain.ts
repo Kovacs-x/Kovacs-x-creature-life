@@ -65,6 +65,26 @@ export interface M3BrainEvaluation {
   readonly exploreActivation:
     number;
 
+  /*
+   * M3.11R explicit action-feasibility evidence.
+   *
+   * Derived only from legitimate current sensor
+   * evidence already supplied to this function
+   * (direct perception, M2 recall, food contact),
+   * never from hidden food coordinates, object
+   * IDs or renderer state.
+   *
+   * IDLE and EXPLORE are always feasible and are
+   * not represented here: IDLE requires no
+   * evidence, and EXPLORE retains its existing
+   * normal M3 competition semantics unforced.
+   */
+  readonly seekActionFeasible:
+    boolean;
+
+  readonly eatActionFeasible:
+    boolean;
+
   readonly selectedActionId:
     string;
 }
@@ -274,6 +294,49 @@ export function evaluateM3Brain(
     ] ?? 0;
 
   /*
+   * M3.11R EXPLICIT ACTION FEASIBILITY
+   *
+   * A genuine persistent-play liveness defect was
+   * found in continuous repeated-feeding play:
+   * reward-modulated plasticity can legitimately
+   * strengthen a contact-independent connection
+   * (e.g. hunger-to-eat) until an action wins
+   * competition even though no physically
+   * supported opportunity exists for it. Because
+   * an unsuccessful action produces no reward and
+   * no biological change, the state becomes a
+   * permanent fixed point: the same physically
+   * unsupported action wins forever.
+   *
+   * Feasibility does not choose a fallback action
+   * and does not zero or hide the raw learned
+   * activation. It only restricts which candidates
+   * may *win* the same generic deterministic
+   * competition, using exclusively evidence already
+   * legitimately available to cognition this tick:
+   *
+   * - SEEK is feasible only when a legitimate
+   *   movement-direction source exists: current
+   *   direct perception, or a currently usable M2
+   *   recall signal.
+   * - EAT is feasible only when the legitimate
+   *   food-contact sense reports inRange.
+   *
+   * IDLE is always feasible. EXPLORE keeps its
+   * existing normal M3 competition semantics
+   * unforced (always feasible; still must win on
+   * activation like any other candidate).
+   */
+  const seekActionFeasible =
+    food !==
+      null ||
+    rememberedFood !==
+      null;
+
+  const eatActionFeasible =
+    contact.inRange;
+
+  /*
    * EXPLORE receives no selection privilege.
    *
    * It is deliberately placed after the
@@ -302,6 +365,9 @@ export function evaluateM3Brain(
 
           activation:
             seekActivation,
+
+          available:
+            seekActionFeasible,
         },
 
         {
@@ -310,6 +376,9 @@ export function evaluateM3Brain(
 
           activation:
             eatActivation,
+
+          available:
+            eatActionFeasible,
         },
 
         {
@@ -333,6 +402,10 @@ export function evaluateM3Brain(
     eatActivation,
 
     exploreActivation,
+
+    seekActionFeasible,
+
+    eatActionFeasible,
 
     selectedActionId:
       selection.selectedActionId,

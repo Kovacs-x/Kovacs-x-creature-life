@@ -66,6 +66,14 @@ import type {
 } from "../senses/foodPerception.js";
 
 import {
+  advanceFoodMemory,
+  encodeFoodMemory,
+  recallFoodMemory,
+  type FoodMemoryRecallSignal,
+  type FoodMemoryTrace,
+} from "../memory/foodMemory.js";
+
+import {
   advanceExplorationPressure,
   createExplorationState,
   deserializeExplorationState,
@@ -93,6 +101,7 @@ import {
   isBrainState,
   isEligibilityTrace,
   isFiniteNumber,
+  isFoodMemoryTrace,
   isFoodState,
   isHungerState,
   isRecord,
@@ -179,14 +188,25 @@ export interface M3AcquisitionState {
     boolean;
 
   /*
-   * M3.2 explicitly disables M2 memory during
-   * the controlled acquisition experiment.
-   *
-   * This keeps discovery/learning history
+   * M3.2 locks the controlled acquisition
+   * experiment and standardized probe to
+   * memoryEnabled = false (see
+   * M3_ACQUISITION_MEMORY_ENABLED and
+   * M3_STANDARDIZED_PROBE.memoryEnabled), so
+   * discovery/learning history there stays
    * separate from remembered-food guidance.
+   *
+   * M3.11R widens the type to a genuine boolean
+   * so the ordinary browser Creature can enable
+   * M2 memory. createM3AcquisitionState(...)
+   * still defaults to
+   * M3_ACQUISITION_MEMORY_ENABLED (false) when
+   * memoryEnabled is not explicitly supplied, so
+   * every existing controlled-experiment call
+   * site is unaffected.
    */
   readonly memoryEnabled:
-    false;
+    boolean;
 
   readonly position: {
     readonly x: number;
@@ -198,6 +218,19 @@ export interface M3AcquisitionState {
 
   readonly food:
     FoodObjectState;
+
+  /*
+   * Persistent M2 sensory-derived memory.
+   *
+   * Reuses the accepted foodMemory.ts primitives
+   * exactly (encodeFoodMemory/advanceFoodMemory/
+   * recallFoodMemory). Always null while
+   * memoryEnabled is false, matching the locked
+   * controlled-acquisition/standardized-probe
+   * contract.
+   */
+  readonly foodMemory:
+    FoodMemoryTrace | null;
 
   readonly sensoryOccluder:
     SensoryOccluderState;
@@ -248,6 +281,16 @@ export interface M3AcquisitionRoundConfig {
     boolean;
 
   readonly explorationEnabled:
+    boolean;
+
+  /*
+   * Optional so every existing controlled-
+   * experiment call site keeps the locked
+   * M3_ACQUISITION_MEMORY_ENABLED (false)
+   * default without change. The ordinary browser
+   * Creature creator supplies true.
+   */
+  readonly memoryEnabled?:
     boolean;
 
   /*
@@ -323,17 +366,56 @@ export interface M3AcquisitionTickEvidence {
     number;
 
   /*
-   * The M3 acquisition route always evaluates
-   * cognition with M2 memory explicitly absent
-   * (memoryEnabled is locked false; recall is
-   * never supplied to evaluateM3Brain()). This
-   * literal makes that fact directly inspectable
-   * in telemetry instead of requiring an
-   * inference from rememberedFoodInputActivation
-   * alone.
+   * True only when a usable M2 recall signal was
+   * actually supplied to evaluateM3Brain() this
+   * tick (memoryEnabled, no current direct
+   * perception, and a still-recallable trace).
+   * Always false for the locked memory-disabled
+   * controlled-acquisition/standardized-probe
+   * route, matching the existing M3.2 contract.
    */
   readonly activeFoodMemoryPresent:
-    false;
+    boolean;
+
+  /*
+   * The Creature's own persistent memory trace
+   * immediately before this tick's update, and
+   * again after. Both are the genuine
+   * FoodMemoryTrace objects (or null), never
+   * reconstructed. Comparing the two lets an
+   * observer determine encoding, refresh,
+   * decay or expiration without this module
+   * recomputing that classification itself.
+   */
+  readonly foodMemoryBefore:
+    FoodMemoryTrace | null;
+
+  readonly foodMemoryAfter:
+    FoodMemoryTrace | null;
+
+  /*
+   * The exact recall signal supplied to
+   * evaluateM3Brain() this tick, or null. This
+   * is recallFoodMemory(...) applied to the
+   * Creature's own trace; it is never derived
+   * from hidden food coordinates.
+   */
+  readonly foodMemoryRecall:
+    FoodMemoryRecallSignal | null;
+
+  /*
+   * Which legitimate evidence source, if any,
+   * supplied the direction actually used for a
+   * SEEK physical consequence this tick. Direct
+   * perception always takes priority over
+   * recall; recall is used only when direct
+   * perception is absent. null when SEEK did not
+   * win or did not move.
+   */
+  readonly seekDirectionSource:
+    "direct-perception" |
+    "memory-recall" |
+    null;
 
   readonly contactInputActivation:
     number;
@@ -359,6 +441,25 @@ export interface M3AcquisitionTickEvidence {
 
   readonly exploreActivation:
     number;
+
+  /*
+   * M3.11R explicit action-feasibility evidence,
+   * read directly from evaluateM3Brain()'s result.
+   *
+   * Raw learned activations above remain unchanged
+   * and causally inspectable even when a candidate
+   * was infeasible; feasibility only restricted
+   * which candidate could win this tick's
+   * competition, using only legitimate current
+   * sensor evidence (direct perception, M2 recall,
+   * food contact). It never chose a fallback action
+   * directly.
+   */
+  readonly seekActionFeasible:
+    boolean;
+
+  readonly eatActionFeasible:
+    boolean;
 
   /*
    * Active exploratory heading immediately
@@ -552,6 +653,7 @@ export function createM3AcquisitionState(
       config.explorationEnabled,
 
     memoryEnabled:
+      config.memoryEnabled ??
       M3_ACQUISITION_MEMORY_ENABLED,
 
     position: {
@@ -575,6 +677,9 @@ export function createM3AcquisitionState(
         M3_ACQUISITION_FOOD.y,
         M3_ACQUISITION_FOOD.nutrition,
       ),
+
+    foodMemory:
+      null,
 
     sensoryOccluder:
       createSensoryOccluder(
@@ -681,6 +786,82 @@ export function advanceM3AcquisitionTick(
       state.sensoryOccluder,
     );
 
+  /*
+   * M3.11R MEMORY STATE UPDATE
+   *
+   * Reuses the accepted M2 primitives exactly,
+   * mirroring the integration already accepted
+   * in advanceM1Episode(...):
+   *
+   * memory disabled
+   *   -> no trace is retained;
+   *
+   * legitimate direct perception this tick
+   *   -> current evidence refreshes the trace;
+   *
+   * otherwise, an existing trace
+   *   -> ages through explicit simulation time
+   *      and may become unusable.
+   *
+   * This never inspects hidden food coordinates
+   * or the food object; it only ever reads the
+   * already-derived FoodPerceptionSignal.
+   */
+  const foodMemoryBefore:
+    FoodMemoryTrace | null =
+      state.foodMemory ??
+      null;
+
+  let foodMemory:
+    FoodMemoryTrace | null =
+      foodMemoryBefore;
+
+  if (!state.memoryEnabled) {
+    foodMemory =
+      null;
+  } else if (
+    directFoodPerceptionBefore
+      .foodSignal !==
+      null
+  ) {
+    foodMemory =
+      encodeFoodMemory(
+        directFoodPerceptionBefore
+          .foodSignal,
+
+        state.simulationTimeSeconds,
+      );
+  } else if (
+    foodMemory !==
+    null
+  ) {
+    foodMemory =
+      advanceFoodMemory(
+        foodMemory,
+        state.simulationTimeSeconds,
+      );
+  }
+
+  /*
+   * RECALL
+   *
+   * Exposed only while current direct
+   * perception is absent, so direct evidence
+   * always retains epistemic priority and is
+   * never combined with a freshly encoded
+   * representation of itself.
+   */
+  const foodMemoryRecall:
+    FoodMemoryRecallSignal | null =
+      state.memoryEnabled &&
+      directFoodPerceptionBefore
+        .foodSignal ===
+        null
+        ? recallFoodMemory(
+            foodMemory,
+          )
+        : null;
+
   const hungerSignal =
     senseHunger(
       state.hunger,
@@ -721,7 +902,7 @@ export function advanceM3AcquisitionTick(
 
       contactSignal,
 
-      null,
+      foodMemoryRecall,
     );
 
   const activations:
@@ -814,13 +995,26 @@ export function advanceM3AcquisitionTick(
   } | null =
     null;
 
+  let seekDirectionSource:
+    "direct-perception" |
+    "memory-recall" |
+    null =
+      null;
+
   /*
-   * Existing food-directed SEEK movement remains
-   * driven only by legitimate direct sensory
-   * direction.
+   * SEEK MOVEMENT PROVENANCE (M2.4 / M3.11R)
    *
-   * M3.6 memory is disabled, so there is no
-   * remembered-food movement route here.
+   * Priority, mirroring the accepted
+   * advanceM1Episode(...) integration exactly:
+   *
+   * 1. current legitimate direct perception;
+   * 2. otherwise a valid M2 recalled direction;
+   * 3. otherwise no SEEK displacement.
+   *
+   * Direct perception always wins when both are
+   * available; recall never supplies a hidden
+   * target coordinate and never bypasses this
+   * priority.
    *
    * M3_ACQUISITION_MOVE_DISTANCE is the maximum
    * distance a single SEEK tick may travel, not
@@ -830,68 +1024,118 @@ export function advanceM3AcquisitionTick(
    * full-distance steps ever enter the 0.25
    * interaction radius, which could otherwise
    * produce indefinite oscillation across the
-   * food. Clamping to the legitimately perceived
+   * food. When direct perception drives movement,
+   * clamping to the legitimately perceived
    * sensory distance lets the Creature stop at
    * the perceived food location instead of
-   * overshooting it. This still uses only the
-   * existing legitimate direction/distance
-   * evidence already available to cognition; it
-   * does not read hidden food coordinates, force
-   * EAT or consume food during this tick.
+   * overshooting it. Recall carries no legitimate
+   * distance evidence (FoodMemoryRecallSignal
+   * never stores one), so recall-guided SEEK uses
+   * the full locked move distance, exactly as the
+   * accepted M2 recall-guided movement already
+   * does. Neither route reads hidden food
+   * coordinates, forces EAT or consumes food
+   * during this tick.
    */
   if (
     decision.selectedActionId ===
-      "seek" &&
-    directFoodPerceptionBefore
-      .foodSignal !==
-      null
+    "seek"
   ) {
-    const seekDistance =
-      Math.min(
-        M3_ACQUISITION_MOVE_DISTANCE,
+    if (
+      directFoodPerceptionBefore
+        .foodSignal !==
+        null
+    ) {
+      const seekDistance =
+        Math.min(
+          M3_ACQUISITION_MOVE_DISTANCE,
 
-        directFoodPerceptionBefore
-          .foodSignal
-          .distance,
-      );
+          directFoodPerceptionBefore
+            .foodSignal
+            .distance,
+        );
 
-    const movement =
-      moveAlongDirection(
-        position,
+      const movement =
+        moveAlongDirection(
+          position,
 
-        directFoodPerceptionBefore
-          .foodSignal
-          .directionX,
+          directFoodPerceptionBefore
+            .foodSignal
+            .directionX,
 
-        directFoodPerceptionBefore
-          .foodSignal
-          .directionY,
+          directFoodPerceptionBefore
+            .foodSignal
+            .directionY,
 
-        seekDistance,
+          seekDistance,
 
-        M3_HABITAT_BOUNDS,
-      );
+          M3_HABITAT_BOUNDS,
+        );
 
-    position =
-      movement.position;
+      position =
+        movement.position;
 
-    movementSource =
-      "seek";
+      movementSource =
+        "seek";
 
-    distanceMoved =
-      movement.distanceMoved;
+      distanceMoved =
+        movement.distanceMoved;
 
-    seekMovementDirection = {
-      x:
-        directFoodPerceptionBefore
-          .foodSignal
-          .directionX,
+      seekMovementDirection = {
+        x:
+          directFoodPerceptionBefore
+            .foodSignal
+            .directionX,
 
-      y:
-        directFoodPerceptionBefore
-          .foodSignal
-          .directionY,
-    };
+        y:
+          directFoodPerceptionBefore
+            .foodSignal
+            .directionY,
+      };
+
+      seekDirectionSource =
+        "direct-perception";
+    } else if (
+      foodMemoryRecall !==
+      null
+    ) {
+      const movement =
+        moveAlongDirection(
+          position,
+
+          foodMemoryRecall
+            .directionX,
+
+          foodMemoryRecall
+            .directionY,
+
+          M3_ACQUISITION_MOVE_DISTANCE,
+
+          M3_HABITAT_BOUNDS,
+        );
+
+      position =
+        movement.position;
+
+      movementSource =
+        "seek";
+
+      distanceMoved =
+        movement.distanceMoved;
+
+      seekMovementDirection = {
+        x:
+          foodMemoryRecall
+            .directionX,
+
+        y:
+          foodMemoryRecall
+            .directionY,
+      };
+
+      seekDirectionSource =
+        "memory-recall";
+    }
   }
 
   /*
@@ -1009,6 +1253,31 @@ export function advanceM3AcquisitionTick(
       );
   }
 
+  const nextSimulationTimeSeconds =
+    state.simulationTimeSeconds +
+    M3_ACQUISITION_TICK_SECONDS;
+
+  /*
+   * Store memory at the end-of-tick simulation
+   * time, mirroring advanceM1Episode(...).
+   * Decay remains based only on explicit
+   * simulation time, so a trace encoded earlier
+   * this same tick is aged forward to reflect
+   * the tick boundary before being read back at
+   * the start of the next tick.
+   */
+  if (
+    state.memoryEnabled &&
+    foodMemory !==
+      null
+  ) {
+    foodMemory =
+      advanceFoodMemory(
+        foodMemory,
+        nextSimulationTimeSeconds,
+      );
+  }
+
   /*
    * M3.2 locked pressure update ordering:
    *
@@ -1044,8 +1313,7 @@ export function advanceM3AcquisitionTick(
         1,
 
       simulationTimeSeconds:
-        state.simulationTimeSeconds +
-        M3_ACQUISITION_TICK_SECONDS,
+        nextSimulationTimeSeconds,
 
       learningEnabled:
         state.learningEnabled,
@@ -1054,13 +1322,15 @@ export function advanceM3AcquisitionTick(
         state.explorationEnabled,
 
       memoryEnabled:
-        false,
+        state.memoryEnabled,
 
       position,
 
       hunger,
 
       food,
+
+      foodMemory,
 
       sensoryOccluder:
         state.sensoryOccluder,
@@ -1170,7 +1440,15 @@ export function advanceM3AcquisitionTick(
         0,
 
       activeFoodMemoryPresent:
-        false,
+        foodMemoryRecall !==
+        null,
+
+      foodMemoryBefore,
+
+      foodMemoryAfter:
+        foodMemory,
+
+      foodMemoryRecall,
 
       contactInputActivation:
         activations[
@@ -1199,6 +1477,12 @@ export function advanceM3AcquisitionTick(
 
       exploreActivation:
         decision.exploreActivation,
+
+      seekActionFeasible:
+        decision.seekActionFeasible,
+
+      eatActionFeasible:
+        decision.eatActionFeasible,
 
       explorationHeadingBefore:
         state.explorationState
@@ -1233,6 +1517,8 @@ export function advanceM3AcquisitionTick(
             },
 
       seekMovementDirection,
+
+      seekDirectionSource,
 
       directFoodPerceptionBefore:
         directFoodPerceptionBefore
@@ -1667,17 +1953,20 @@ export function assertM3AcquisitionStateShape(
   }
 
   /*
-   * M3.2 locks memoryEnabled to false for the
-   * authoritative acquisition state. A persisted
-   * checkpoint claiming otherwise does not match
-   * the contract this state was created under.
+   * M3.11R widens memoryEnabled to a genuine
+   * boolean so the ordinary browser Creature can
+   * enable M2 memory. The locked
+   * controlled-acquisition/standardized-probe
+   * contract still always produces false; this
+   * validator now accepts either value rather
+   * than only false.
    */
   if (
-    value.memoryEnabled !==
-    false
+    typeof value.memoryEnabled !==
+    "boolean"
   ) {
     throw new Error(
-      "M3 acquisition memoryEnabled must be false.",
+      "M3 acquisition memoryEnabled must be a boolean.",
     );
   }
 
@@ -1708,6 +1997,31 @@ export function assertM3AcquisitionStateShape(
   ) {
     throw new Error(
       "M3 acquisition food state is invalid.",
+    );
+  }
+
+  /*
+   * foodMemory is a new field as of M3.11R.
+   * Earlier schema-1 M3 checkpoints predate it
+   * entirely, so `undefined` (the key was never
+   * present in the serialized JSON) is accepted
+   * as equivalent to null for backward
+   * compatibility, matching the same optional-
+   * field pattern already used for M1Episode's
+   * foodMemory. No schema version bump is
+   * required.
+   */
+  if (
+    value.foodMemory !==
+      undefined &&
+    value.foodMemory !==
+      null &&
+    !isFoodMemoryTrace(
+      value.foodMemory,
+    )
+  ) {
+    throw new Error(
+      "M3 acquisition food memory is invalid.",
     );
   }
 

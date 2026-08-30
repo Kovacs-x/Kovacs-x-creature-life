@@ -241,6 +241,17 @@ export function mountM3Habitat(
 
           <article class="m3-status-card">
             <span class="m3-status-key">
+              Food memory
+            </span>
+
+            <strong
+              class="m3-status-value"
+              data-m3-food-memory
+            ></strong>
+          </article>
+
+          <article class="m3-status-card">
+            <span class="m3-status-key">
               Simulation time
             </span>
 
@@ -292,6 +303,12 @@ export function mountM3Habitat(
         class="m3-life-history-panel"
         aria-labelledby="m3-life-history-title"
         data-m3-life-history
+      ></section>
+
+      <section
+        class="m3-learning-check-panel"
+        aria-labelledby="m3-learning-check-title"
+        data-m3-learning-check
       ></section>
 
       <footer class="m3-footer">
@@ -503,6 +520,15 @@ export function mountM3Habitat(
 
   setText(
     root,
+    "[data-m3-food-memory]",
+    formatFoodMemoryState(
+      model.environment
+        .foodMemoryState,
+    ),
+  );
+
+  setText(
+    root,
     "[data-m3-time]",
     `${formatNumber(
       model.simulationTimeSeconds,
@@ -653,6 +679,24 @@ function formatFoodPerceptionState(
 
     case "consumed":
       return "Consumed";
+  }
+}
+
+function formatFoodMemoryState(
+  state:
+    M3PresentationModel[
+      "environment"
+    ]["foodMemoryState"],
+): string {
+  switch (state) {
+    case "none":
+      return "None";
+
+    case "active":
+      return "Active";
+
+    case "decayed":
+      return "Decayed";
   }
 }
 

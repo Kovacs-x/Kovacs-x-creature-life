@@ -12,6 +12,7 @@ import {
 } from "../brain/network.js";
 
 import {
+  createM3Brain,
   evaluateM3Brain,
 } from "../brain/m3Brain.js";
 
@@ -59,6 +60,12 @@ import {
   M3_SAME_SEED_REPLAY_SEED,
   M3_STANDARDIZED_PROBE,
 } from "./m3Contract.js";
+
+export const M3_LEARNING_COMPARISON_FRESH_IDENTITY =
+  "m3-learning-comparison-fresh-equivalent" as const;
+
+export const M3_LEARNING_COMPARISON_CURRENT_IDENTITY =
+  "m3-learning-comparison-current-learned" as const;
 
 export const M3_PROBE_IDENTITY_A =
   "m3-probe-identity-a" as const;
@@ -841,5 +848,100 @@ export function runM3IndividualityProbeExperiment():
     identityAWithBranchBWeights,
 
     identityBWithBranchAWeights,
+  };
+}
+
+/*
+ * M3.11R STANDARDIZED LEARNING COMPARISON
+ *
+ * A small READ-ONLY diagnostic that makes
+ * whether this Creature's learned neural state
+ * actually matters inspectable, without inventing
+ * a second probe mechanism.
+ *
+ * It runs the already-accepted
+ * runM3StandardizedProbe(...) exactly twice under
+ * the identical locked normalized conditions:
+ *
+ * - once with a genuinely fresh, unlearned M3
+ *   brain;
+ * - once with this Creature's current brain,
+ *   exactly as supplied.
+ *
+ * runM3StandardizedProbe(...) already normalizes
+ * position, hunger, food, perception, memory,
+ * eligibility, exploration and RNG and only ever
+ * constructs new BrainState objects internally
+ * (normalizeM3ProbeBrain/evaluateBrain never
+ * mutate their input). Calling it here therefore:
+ *
+ * - does not modify the running Creature's brain,
+ *   position, biology, memory, exploration state
+ *   or RNG;
+ * - does not rerun or alter the Creature's
+ *   acquisition history;
+ * - does not feed anything back into cognition;
+ * - consumes no authoritative simulation RNG.
+ *
+ * The comparison may truthfully show no
+ * difference. It must not be presented as
+ * guaranteeing one.
+ */
+export interface M3StandardizedLearningComparison {
+  readonly freshEquivalent:
+    M3StandardizedProbeResult;
+
+  readonly currentLearned:
+    M3StandardizedProbeResult;
+
+  readonly connectionWeightsDiffer:
+    boolean;
+
+  readonly selectedActionDiffers:
+    boolean;
+}
+
+export function runM3StandardizedLearningComparison(
+  currentBrain:
+    BrainState,
+): M3StandardizedLearningComparison {
+  const freshEquivalent =
+    runM3StandardizedProbe(
+      M3_LEARNING_COMPARISON_FRESH_IDENTITY,
+
+      createM3Brain(),
+    );
+
+  const currentLearned =
+    runM3StandardizedProbe(
+      M3_LEARNING_COMPARISON_CURRENT_IDENTITY,
+
+      currentBrain,
+    );
+
+  const connectionWeightsDiffer =
+    JSON.stringify(
+      freshEquivalent
+        .connectionWeights,
+    ) !==
+    JSON.stringify(
+      currentLearned
+        .connectionWeights,
+    );
+
+  const selectedActionDiffers =
+    freshEquivalent
+      .selectedActionId !==
+    currentLearned
+      .selectedActionId;
+
+  return {
+    freshEquivalent,
+
+    currentLearned,
+
+    connectionWeightsDiffer,
+
+    selectedActionDiffers,
   };
 }
