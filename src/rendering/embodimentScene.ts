@@ -30,6 +30,13 @@ import {
 } from "./embodimentLocomotion.js";
 
 import {
+  advanceEmbodimentAnimationState,
+  createEmbodimentAnimationState,
+  sampleEmbodimentAnimation,
+  type EmbodimentAnimationState,
+} from "./embodimentAnimation.js";
+
+import {
   EMBODIMENT_GROUND_Y,
   M3_EMBODIMENT_SCENE_BOUNDS,
 } from "./embodimentCoordinates.js";
@@ -44,16 +51,14 @@ import {
  *   ->
  * M3PresentationModel
  *   ->
- * updatePresentation(...)
+ * factual actor update
  *   ->
- * presentation interpolation
+ * presentation interpolation / animation
  *   ->
- * updateFrame(...)
- *   ->
- * Three.js actor transforms
+ * Three.js transforms
  *
- * Locomotion interpolation is presentation
- * state only.
+ * requestAnimationFrame-facing work here is
+ * presentation only.
  *
  * It must never:
  *
@@ -62,6 +67,8 @@ import {
  * - select actions;
  * - create memory;
  * - alter learning;
+ * - alter biology;
+ * - alter exploration;
  * - inspect hidden targets for behaviour;
  * - consume simulation RNG.
  */
@@ -133,15 +140,8 @@ export interface EmbodimentSceneBundle {
 
   /*
    * Accept a newly derived authoritative
-   * presentation model at an absolute
+   * presentation model at an absolute browser
    * presentation timestamp.
-   *
-   * The actor graph receives factual state
-   * immediately.
-   *
-   * Creature X/Z may then be visually
-   * interpolated between authoritative
-   * endpoints.
    */
   readonly updatePresentation:
     (
@@ -153,8 +153,8 @@ export interface EmbodimentSceneBundle {
     ) => void;
 
   /*
-   * Advance presentation-only visual state to
-   * the supplied absolute presentation time.
+   * Sample presentation-only locomotion and
+   * animation at an absolute browser timestamp.
    *
    * This never advances simulation time.
    */
@@ -230,6 +230,36 @@ export function createEmbodimentScene(
   const actors =
     createEmbodimentActorGraph();
 
+  /*
+   * Capture the authored primitive body's
+   * neutral scale once.
+   *
+   * Animation samples are multipliers around
+   * this authored presentation shape.
+   *
+   * This avoids duplicating geometry constants
+   * in the animation system.
+   */
+  const creatureBodyNeutralScale = {
+    x:
+      actors
+        .creatureBody
+        .scale
+        .x,
+
+    y:
+      actors
+        .creatureBody
+        .scale
+        .y,
+
+    z:
+      actors
+        .creatureBody
+        .scale
+        .z,
+  } as const;
+
   scene.add(
     camera,
     floor,
@@ -240,15 +270,18 @@ export function createEmbodimentScene(
   );
 
   /*
-   * This state stores only presentation
-   * interpolation endpoints/timing.
+   * Both states below are renderer-owned
+   * presentation state only.
    *
-   * The authoritative Creature position remains
-   * in M3 simulation state and presentation
-   * models.
+   * Neither is serialized as Creature state or
+   * fed into cognition.
    */
   let locomotionState:
     EmbodimentLocomotionState | null =
+      null;
+
+  let animationState:
+    EmbodimentAnimationState | null =
       null;
 
   const updateFrame =
@@ -258,29 +291,107 @@ export function createEmbodimentScene(
     ): void => {
       if (
         locomotionState ===
-        null
+          null ||
+        animationState ===
+          null
       ) {
         return;
       }
 
-      const sample =
+      /*
+       * performance.now() read during an
+       * authoritative presentation update may be
+       * infinitesimally later than the timestamp
+       * delivered by the immediately following
+       * RAF callback.
+       *
+       * Clamp only presentation sampling time so
+       * browser scheduling cannot make visual
+       * time move backwards.
+       *
+       * Simulation time is entirely unrelated to
+       * this value.
+       */
+      const effectivePresentationTimeSeconds =
+        Math.max(
+          presentationTimeSeconds,
+          animationState
+            .lastPresentationTimeSeconds,
+        );
+
+      const locomotionSample =
         sampleEmbodimentLocomotion(
           locomotionState,
-          presentationTimeSeconds,
+          effectivePresentationTimeSeconds,
+        );
+
+      const animationSample =
+        sampleEmbodimentAnimation(
+          animationState,
+          effectivePresentationTimeSeconds,
+          locomotionSample.transitioning,
         );
 
       /*
-       * Only displayed planar position is
-       * modified here.
-       *
-       * Y remains presentation-only body height,
-       * and nothing flows back into simulation.
+       * X/Z are the visually interpolated
+       * presentation of authoritative planar
+       * Creature movement.
        */
       actors.creatureRoot.position.x =
-        sample.position.x;
+        locomotionSample
+          .position
+          .x;
 
       actors.creatureRoot.position.z =
-        sample.position.z;
+        locomotionSample
+          .position
+          .z;
+
+      /*
+       * Scene Y remains presentation-only.
+       *
+       * Gait bob never becomes simulation
+       * position.
+       */
+      actors.creatureRoot.position.y =
+        EMBODIMENT_GROUND_Y +
+        animationSample
+          .locomotionBobY;
+
+      /*
+       * Breathing and successful-eating
+       * compression alter only the visual
+       * primitive body around its authored
+       * neutral scale.
+       */
+      actors.creatureBody.scale.set(
+        creatureBodyNeutralScale.x *
+          animationSample
+            .breathingScaleXZMultiplier,
+
+        creatureBodyNeutralScale.y *
+          animationSample
+            .breathingScaleYMultiplier *
+          animationSample
+            .eatingCompressionYMultiplier,
+
+        creatureBodyNeutralScale.z *
+          animationSample
+            .breathingScaleXZMultiplier,
+      );
+
+      /*
+       * Facing remains exclusively rotation.y,
+       * established by genuine displacement in
+       * the actor graph.
+       *
+       * A successful eating event may add a
+       * temporary presentation-only forward dip
+       * on a separate Euler axis.
+       */
+      actors.creatureRoot.rotation.z =
+        animationSample
+          .eatingForwardDipRadians;
     };
 
   return {
@@ -314,23 +425,45 @@ export function createEmbodimentScene(
           );
       }
 
+      if (
+        animationState ===
+        null
+      ) {
+        animationState =
+          createEmbodimentAnimationState(
+            model,
+            presentationTimeSeconds,
+          );
+      } else {
+        animationState =
+          advanceEmbodimentAnimationState(
+            animationState,
+            model,
+            presentationTimeSeconds,
+          );
+      }
+
       /*
-       * Actor update handles factual
-       * presentation properties:
+       * First apply factual current presentation:
        *
-       * - authoritative target position;
+       * - authoritative Creature destination;
        * - genuine displacement-derived facing;
-       * - food;
-       * - sensory screen.
-       *
-       * updateFrame(...) immediately replaces
-       * only Creature X/Z with the appropriate
-       * visual interpolation sample.
+       * - authoritative food;
+       * - authoritative sensory-screen state.
        */
       actors.updatePresentation(
         model,
       );
 
+      /*
+       * Then replace only presentation-enriched
+       * transforms:
+       *
+       * - interpolated X/Z;
+       * - visual Y gait bob;
+       * - breathing;
+       * - genuine-success eating reaction.
+       */
       updateFrame(
         presentationTimeSeconds,
       );
@@ -416,14 +549,6 @@ function createHabitatFloor():
   floor.name =
     "embodiment-habitat-floor";
 
-  /*
-   * PlaneGeometry starts in the XY plane.
-   *
-   * Rotate it onto XZ so:
-   *
-   * simulation x -> scene x
-   * simulation y -> scene z
-   */
   floor.rotation.x =
     -Math.PI /
     2;
