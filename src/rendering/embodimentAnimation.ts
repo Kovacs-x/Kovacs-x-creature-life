@@ -24,6 +24,11 @@ import type {
  * - consume simulation RNG;
  * - invent successful eating.
  *
+ * Breathing, blinking and gait are deterministic
+ * functions of absolute presentation time.
+ *
+ * They do not have independent simulation state.
+ *
  * In particular:
  *
  * model.creature.activityState === "eating"
@@ -41,6 +46,32 @@ export const EMBODIMENT_BREATHING_Y_AMPLITUDE =
 
 export const EMBODIMENT_BREATHING_XZ_AMPLITUDE =
   0.008;
+
+export const EMBODIMENT_BLINK_PERIOD_SECONDS =
+  4.8;
+
+export const EMBODIMENT_BLINK_DURATION_SECONDS =
+  0.18;
+
+/*
+ * Avoid blinking immediately when the page
+ * mounts.
+ *
+ * This is a fixed presentation offset, not
+ * randomness.
+ */
+export const EMBODIMENT_BLINK_INITIAL_DELAY_SECONDS =
+  2.4;
+
+/*
+ * Eyes never become mathematically flat.
+ *
+ * A small positive scale avoids degenerate
+ * geometry while still reading visually as a
+ * closed blink.
+ */
+export const EMBODIMENT_BLINK_MINIMUM_EYE_SCALE_Y =
+  0.08;
 
 export const EMBODIMENT_GAIT_PERIOD_SECONDS =
   0.34;
@@ -70,8 +101,8 @@ export const EMBODIMENT_EATING_DIP_RADIANS =
  * infinitesimally below duration.
  *
  * This tolerance prevents that representation
- * error from extending an animation past its
- * defined endpoint.
+ * error from extending a presentation animation
+ * past its defined endpoint.
  *
  * It has no simulation or behavioural meaning.
  */
@@ -125,6 +156,17 @@ export interface EmbodimentAnimationSample {
     number;
 
   readonly breathingScaleXZMultiplier:
+    number;
+
+  /*
+   * Deterministic presentation-only eye scale.
+   *
+   * 1 = fully open.
+   *
+   * EMBODIMENT_BLINK_MINIMUM_EYE_SCALE_Y =
+   * visually closed.
+   */
+  readonly blinkEyeScaleYMultiplier:
     number;
 
   /*
@@ -235,8 +277,12 @@ export function advanceEmbodimentAnimationState(
      * between authoritative runs.
      *
      * This prevents a newly reset Creature from
-     * inheriting a gait/eating event from the
+     * inheriting an eating event from the
      * previous run.
+     *
+     * Periodic breathing/blinking/gait remain
+     * deterministic browser-time presentation
+     * functions and carry no Creature state.
      */
     return createEmbodimentAnimationState(
       model,
@@ -353,6 +399,11 @@ export function sampleEmbodimentAnimation(
     breathingWave *
     EMBODIMENT_BREATHING_XZ_AMPLITUDE;
 
+  const blinkEyeScaleYMultiplier =
+    deriveBlinkEyeScaleYMultiplier(
+      presentationTimeSeconds,
+    );
+
   const locomotionBobY =
     locomotionTransitioning
       ? deriveLocomotionBob(
@@ -370,6 +421,8 @@ export function sampleEmbodimentAnimation(
     breathingScaleYMultiplier,
 
     breathingScaleXZMultiplier,
+
+    blinkEyeScaleYMultiplier,
 
     locomotionBobY,
 
@@ -399,6 +452,84 @@ interface EatingSample {
 
   readonly forwardDipRadians:
     number;
+}
+
+function deriveBlinkEyeScaleYMultiplier(
+  presentationTimeSeconds:
+    number,
+): number {
+  /*
+   * The first blink begins only after a fixed
+   * presentation delay.
+   *
+   * There is no RNG and no Creature-side blink
+   * state.
+   */
+  if (
+    presentationTimeSeconds <
+    EMBODIMENT_BLINK_INITIAL_DELAY_SECONDS
+  ) {
+    return 1;
+  }
+
+  const cycleTime =
+    (
+      presentationTimeSeconds -
+      EMBODIMENT_BLINK_INITIAL_DELAY_SECONDS
+    ) %
+    EMBODIMENT_BLINK_PERIOD_SECONDS;
+
+  /*
+   * Outside the short blink window, eyes remain
+   * fully open.
+   *
+   * Numerical tolerance keeps the exact start
+   * and end of the blink neutral.
+   */
+  if (
+    cycleTime <=
+      EMBODIMENT_PRESENTATION_TIME_EPSILON_SECONDS ||
+    cycleTime +
+      EMBODIMENT_PRESENTATION_TIME_EPSILON_SECONDS >=
+      EMBODIMENT_BLINK_DURATION_SECONDS
+  ) {
+    return 1;
+  }
+
+  const blinkProgress =
+    clamp(
+      cycleTime /
+      EMBODIMENT_BLINK_DURATION_SECONDS,
+      0,
+      1,
+    );
+
+  /*
+   * One symmetric eyelid-like pulse:
+   *
+   * open
+   *   ->
+   * closed
+   *   ->
+   * open
+   *
+   * The eyes are never given authority over
+   * sensing; this is visual geometry only.
+   */
+  const closure =
+    Math.sin(
+      blinkProgress *
+      Math.PI,
+    );
+
+  return (
+    1 -
+    closure *
+    (
+      1 -
+      EMBODIMENT_BLINK_MINIMUM_EYE_SCALE_Y
+    )
+  );
 }
 
 function deriveEatingSample(

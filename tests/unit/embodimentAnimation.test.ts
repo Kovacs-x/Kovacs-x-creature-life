@@ -5,6 +5,10 @@ import {
 } from "vitest";
 
 import {
+  EMBODIMENT_BLINK_DURATION_SECONDS,
+  EMBODIMENT_BLINK_INITIAL_DELAY_SECONDS,
+  EMBODIMENT_BLINK_MINIMUM_EYE_SCALE_Y,
+  EMBODIMENT_BLINK_PERIOD_SECONDS,
   EMBODIMENT_BREATHING_XZ_AMPLITUDE,
   EMBODIMENT_BREATHING_Y_AMPLITUDE,
   EMBODIMENT_EATING_COMPRESSION,
@@ -155,7 +159,7 @@ describe(
   "embodiment presentation animation",
   () => {
     it(
-      "starts in neutral non-eating state for ordinary idle presentation",
+      "starts in neutral non-eating open-eyed state for ordinary idle presentation",
       () => {
         const state =
           createEmbodimentAnimationState(
@@ -198,6 +202,13 @@ describe(
           sample.locomotionBobY,
         ).toBe(
           0,
+        );
+
+        expect(
+          sample
+            .blinkEyeScaleYMultiplier,
+        ).toBe(
+          1,
         );
       },
     );
@@ -262,6 +273,176 @@ describe(
         ).toEqual(
           sample,
         );
+      },
+    );
+
+    it(
+      "keeps the eyes open before the deterministic first-blink delay",
+      () => {
+        const state =
+          createEmbodimentAnimationState(
+            createModel(),
+            0,
+          );
+
+        const sample =
+          sampleEmbodimentAnimation(
+            state,
+            EMBODIMENT_BLINK_INITIAL_DELAY_SECONDS /
+              2,
+            false,
+          );
+
+        expect(
+          sample
+            .blinkEyeScaleYMultiplier,
+        ).toBe(
+          1,
+        );
+      },
+    );
+
+    it(
+      "closes and reopens the eyes during the deterministic blink window",
+      () => {
+        const state =
+          createEmbodimentAnimationState(
+            createModel(),
+            0,
+          );
+
+        const blinkStart =
+          sampleEmbodimentAnimation(
+            state,
+            EMBODIMENT_BLINK_INITIAL_DELAY_SECONDS,
+            false,
+          );
+
+        const blinkMidpoint =
+          sampleEmbodimentAnimation(
+            state,
+            EMBODIMENT_BLINK_INITIAL_DELAY_SECONDS +
+            EMBODIMENT_BLINK_DURATION_SECONDS /
+              2,
+            false,
+          );
+
+        const blinkEnd =
+          sampleEmbodimentAnimation(
+            state,
+            EMBODIMENT_BLINK_INITIAL_DELAY_SECONDS +
+            EMBODIMENT_BLINK_DURATION_SECONDS,
+            false,
+          );
+
+        expect(
+          blinkStart
+            .blinkEyeScaleYMultiplier,
+        ).toBe(
+          1,
+        );
+
+        expect(
+          blinkMidpoint
+            .blinkEyeScaleYMultiplier,
+        ).toBeCloseTo(
+          EMBODIMENT_BLINK_MINIMUM_EYE_SCALE_Y,
+        );
+
+        expect(
+          blinkEnd
+            .blinkEyeScaleYMultiplier,
+        ).toBe(
+          1,
+        );
+      },
+    );
+
+    it(
+      "repeats blinking from absolute presentation time without RNG or accumulated frame state",
+      () => {
+        const state =
+          createEmbodimentAnimationState(
+            createModel(),
+            0,
+          );
+
+        const firstBlinkMidpoint =
+          EMBODIMENT_BLINK_INITIAL_DELAY_SECONDS +
+          EMBODIMENT_BLINK_DURATION_SECONDS /
+            2;
+
+        const secondBlinkMidpoint =
+          firstBlinkMidpoint +
+          EMBODIMENT_BLINK_PERIOD_SECONDS;
+
+        const first =
+          sampleEmbodimentAnimation(
+            state,
+            firstBlinkMidpoint,
+            false,
+          );
+
+        const second =
+          sampleEmbodimentAnimation(
+            state,
+            secondBlinkMidpoint,
+            false,
+          );
+
+        expect(
+          second
+            .blinkEyeScaleYMultiplier,
+        ).toBeCloseTo(
+          first
+            .blinkEyeScaleYMultiplier,
+        );
+
+        expect(
+          second
+            .blinkEyeScaleYMultiplier,
+        ).toBeCloseTo(
+          EMBODIMENT_BLINK_MINIMUM_EYE_SCALE_Y,
+        );
+      },
+    );
+
+    it(
+      "keeps deterministic blink eye scale within its presentation bounds",
+      () => {
+        const state =
+          createEmbodimentAnimationState(
+            createModel(),
+            0,
+          );
+
+        for (
+          let step = 0;
+          step <= 200;
+          step += 1
+        ) {
+          const sample =
+            sampleEmbodimentAnimation(
+              state,
+              step /
+                20,
+              false,
+            );
+
+          expect(
+            sample
+              .blinkEyeScaleYMultiplier,
+          ).toBeGreaterThanOrEqual(
+            EMBODIMENT_BLINK_MINIMUM_EYE_SCALE_Y,
+          );
+
+          expect(
+            sample
+              .blinkEyeScaleYMultiplier,
+          ).toBeLessThanOrEqual(
+            1,
+          );
+        }
       },
     );
 
@@ -690,6 +871,73 @@ describe(
           highFrequency,
         ).toEqual(
           lowFrequency,
+        );
+      },
+    );
+
+    it(
+      "produces the same blink at the same timestamp regardless of prior frame sampling",
+      () => {
+        const state =
+          createEmbodimentAnimationState(
+            createModel(),
+            0,
+          );
+
+        const blinkMidpoint =
+          EMBODIMENT_BLINK_INITIAL_DELAY_SECONDS +
+          EMBODIMENT_BLINK_DURATION_SECONDS /
+            2;
+
+        for (
+          let frame = 0;
+          frame < 60;
+          frame += 1
+        ) {
+          sampleEmbodimentAnimation(
+            state,
+            (
+              blinkMidpoint *
+              frame
+            ) /
+            60,
+            false,
+          );
+        }
+
+        const afterManySamples =
+          sampleEmbodimentAnimation(
+            state,
+            blinkMidpoint,
+            false,
+          );
+
+        const directState =
+          createEmbodimentAnimationState(
+            createModel(),
+            0,
+          );
+
+        const direct =
+          sampleEmbodimentAnimation(
+            directState,
+            blinkMidpoint,
+            false,
+          );
+
+        expect(
+          afterManySamples
+            .blinkEyeScaleYMultiplier,
+        ).toBeCloseTo(
+          direct
+            .blinkEyeScaleYMultiplier,
+        );
+
+        expect(
+          direct
+            .blinkEyeScaleYMultiplier,
+        ).toBeCloseTo(
+          EMBODIMENT_BLINK_MINIMUM_EYE_SCALE_Y,
         );
       },
     );
