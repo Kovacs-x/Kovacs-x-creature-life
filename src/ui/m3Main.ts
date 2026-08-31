@@ -1,4 +1,5 @@
 import "./m3.css";
+import "./embodiment.css";
 
 import {
   deriveM3PresentationModel,
@@ -47,10 +48,16 @@ import {
   mountM3LearningCheck,
 } from "./m3LearningCheckView.js";
 
+import {
+  mountEmbodimentThreeRenderer,
+} from "./embodimentThreeRenderer.js";
+
 /*
- * M3 APPLICATION BOOTSTRAP
+ * POST-M3 EMBODIMENT APPLICATION BOOTSTRAP
  *
- * Browser control intent
+ * The authoritative application path remains:
+ *
+ * browser control intent
  *   ->
  * M3ApplicationController
  *   ->
@@ -62,6 +69,30 @@ import {
  * deriveM3PresentationModel(...)
  *   ->
  * browser presentation
+ *
+ * The new Three.js renderer is deliberately
+ * mounted beside the existing M3 DOM UI rather
+ * than inside the DOM subtree that
+ * mountM3Habitat(...) currently rebuilds.
+ *
+ * Browser root
+ *   |
+ *   +-> persistent Three.js presentation host
+ *   |
+ *   +-> existing M3 UI root
+ *
+ * The Three.js requestAnimationFrame loop is a
+ * rendering loop only.
+ *
+ * It never:
+ *
+ * - advances simulation;
+ * - evaluates cognition;
+ * - chooses an action;
+ * - updates memory;
+ * - updates biology;
+ * - changes exploration;
+ * - consumes authoritative simulation RNG.
  *
  * Separately, outside cognition:
  *
@@ -75,15 +106,38 @@ import {
  *   ->
  * player-facing biography
  *
- * Life history is retained across ordinary
- * ticks and player placements during the same
- * run and is reset only when Reset starts a
- * new run. It is never supplied back into
- * cognition.
+ * Life History remains outside cognition.
  */
 
-const root =
+const browserRoot =
   requireM3BrowserRoot();
+
+const browserShell =
+  createEmbodimentBrowserShell(
+    browserRoot,
+  );
+
+const threeRenderer =
+  mountEmbodimentThreeRenderer(
+    browserShell.threeHost,
+  );
+
+/*
+ * Explicitly release presentation resources
+ * when the page is being discarded.
+ *
+ * This has no simulation consequence.
+ */
+window.addEventListener(
+  "beforeunload",
+  () => {
+    threeRenderer.dispose();
+  },
+  {
+    once:
+      true,
+  },
+);
 
 const initialState =
   createInitialM3State();
@@ -116,8 +170,15 @@ function renderState(
       evidence,
     );
 
+  /*
+   * Existing M3 DOM presentation continues to
+   * render inside its own subtree.
+   *
+   * Rebuilding this subtree cannot destroy or
+   * recreate the sibling Three.js canvas.
+   */
   mountM3Habitat(
-    root,
+    browserShell.m3Root,
     presentation,
 
     {
@@ -133,7 +194,7 @@ function renderState(
 
   controlView =
     mountM3Controls(
-      root,
+      browserShell.m3Root,
       {
         onPlay: () => {
           controller.play();
@@ -160,7 +221,7 @@ function renderState(
   );
 
   mountM3LifeHistory(
-    root,
+    browserShell.m3Root,
     lifeHistory,
   );
 
@@ -173,7 +234,7 @@ function renderState(
    * probe.
    */
   mountM3LearningCheck(
-    root,
+    browserShell.m3Root,
 
     runM3StandardizedLearningComparison(
       current.brain,
@@ -225,8 +286,8 @@ controller =
 
         /*
          * Placement is a same-tick external
-         * world update: no tick evidence
-         * exists for this transition.
+         * world update: no tick evidence exists
+         * for this transition.
          */
         renderState(
           current,
@@ -242,6 +303,11 @@ controller =
          * Reset starts a new run. The
          * player-facing biography restarts
          * with it.
+         *
+         * The presentation-only Three.js
+         * renderer remains mounted because
+         * resetting the Creature does not mean
+         * recreating the browser renderer.
          */
         lifeHistory =
           createM3LifeHistory();
@@ -273,15 +339,14 @@ renderState(
  * For browser reproducibility this uses the
  * already locked M3 primary Branch A seed with
  * learning and exploration enabled, matching
- * the committed M3.2 experimental contract.
+ * the committed M3 experimental contract.
+ *
  * This is not a search for a prettier seed.
  *
  * M3.11R additionally enables M2 memory for the
  * ordinary browser Creature only. The locked
  * controlled acquisition experiment and
- * standardized probe are untouched by this and
- * continue to construct memory-disabled state
- * through their own existing call sites.
+ * standardized probe remain untouched.
  */
 function createInitialM3State():
   M3AcquisitionState {
@@ -300,6 +365,159 @@ function createInitialM3State():
         true,
     },
   );
+}
+
+interface EmbodimentBrowserShell {
+  readonly threeHost:
+    HTMLElement;
+
+  readonly m3Root:
+    HTMLElement;
+}
+
+/*
+ * Create the browser presentation partition
+ * exactly once.
+ *
+ * The Three.js host is outside the subtree that
+ * the legacy M3 DOM habitat renderer rebuilds.
+ *
+ * This is presentation structure only.
+ */
+function createEmbodimentBrowserShell(
+  root:
+    HTMLElement,
+): EmbodimentBrowserShell {
+  const foundationPanel =
+    document.createElement(
+      "section",
+    );
+
+  foundationPanel.className =
+    "embodiment-foundation-panel";
+
+  foundationPanel.setAttribute(
+    "aria-labelledby",
+    "embodiment-foundation-title",
+  );
+
+  const heading =
+    document.createElement(
+      "div",
+    );
+
+  heading.className =
+    "embodiment-foundation-heading";
+
+  const headingText =
+    document.createElement(
+      "div",
+    );
+
+  const eyebrow =
+    document.createElement(
+      "p",
+    );
+
+  eyebrow.className =
+    "embodiment-foundation-eyebrow";
+
+  eyebrow.textContent =
+    "Embodiment slice";
+
+  const title =
+    document.createElement(
+      "h2",
+    );
+
+  title.id =
+    "embodiment-foundation-title";
+
+  title.textContent =
+    "3D habitat foundation";
+
+  const description =
+    document.createElement(
+      "p",
+    );
+
+  description.className =
+    "embodiment-foundation-description";
+
+  description.textContent =
+    "Presentation-only Three.js floor, bounds, camera and lighting. Creature and food meshes are intentionally not connected yet.";
+
+  headingText.append(
+    eyebrow,
+    title,
+    description,
+  );
+
+  const badge =
+    document.createElement(
+      "span",
+    );
+
+  badge.className =
+    "embodiment-foundation-badge";
+
+  badge.textContent =
+    "E1";
+
+  heading.append(
+    headingText,
+    badge,
+  );
+
+  const threeHost =
+    document.createElement(
+      "div",
+    );
+
+  threeHost.className =
+    "embodiment-three-host";
+
+  threeHost.setAttribute(
+    "data-embodiment-three-host",
+    "",
+  );
+
+  const note =
+    document.createElement(
+      "p",
+    );
+
+  note.className =
+    "embodiment-foundation-note";
+
+  note.textContent =
+    "This visual frame loop does not advance simulation or consume Creature RNG.";
+
+  foundationPanel.append(
+    heading,
+    threeHost,
+    note,
+  );
+
+  const m3Root =
+    document.createElement(
+      "div",
+    );
+
+  m3Root.setAttribute(
+    "data-m3-ui-root",
+    "",
+  );
+
+  root.replaceChildren(
+    foundationPanel,
+    m3Root,
+  );
+
+  return {
+    threeHost,
+    m3Root,
+  };
 }
 
 function requireM3BrowserRoot():
