@@ -121,9 +121,30 @@ const browserShell =
     browserRoot,
   );
 
+/*
+ * E4 PLAYER FOOD PLACEMENT
+ *
+ * The Three.js renderer never receives the
+ * controller itself. It only ever calls this one
+ * narrow callback with an authoritative planar
+ * world position derived from a genuine floor
+ * tap/click, exactly mirroring the existing
+ * onSelectWorldPosition boundary used by the
+ * legacy DOM habitat below.
+ */
 const threeRenderer =
   mountEmbodimentThreeRenderer(
     browserShell.threeHost,
+
+    {
+      onPlaceFoodIntent: (
+        position,
+      ) => {
+        controller.placeFood(
+          position,
+        );
+      },
+    },
   );
 
 /*

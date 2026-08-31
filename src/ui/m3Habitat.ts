@@ -7,20 +7,28 @@ import type {
 } from "../simulation/core/m3PlayerWorld.js";
 
 import {
-  m3ViewportFractionToWorldPosition,
   worldXToViewportPercent,
   worldYToViewportPercent,
 } from "./m3Viewport.js";
 
 export interface M3HabitatActions {
   /*
-   * The renderer converts a tap/click into a
-   * clamped authoritative world position and
-   * hands it upward.
+   * E4: the 3D habitat (embodimentThreeRenderer.ts,
+   * wired through m3Main.ts's onPlaceFoodIntent) is
+   * now the intended world-interaction surface, so
+   * this legacy 2D click-to-place route is disabled
+   * below to avoid a confusing second active
+   * placement surface. The callback contract is
+   * kept so existing callers keep compiling and so
+   * a later embodiment stage can re-wire or retire
+   * it deliberately; it is presently never invoked.
    *
-   * This module never places food itself; it
-   * only reports player intent. It supplies no
-   * information to Creature cognition.
+   * When it was wired, the renderer converted a
+   * tap/click into a clamped authoritative world
+   * position and handed it upward. This module
+   * never placed food itself; it only reported
+   * player intent and supplied no information to
+   * Creature cognition.
    */
   readonly onSelectWorldPosition:
     (
@@ -185,7 +193,7 @@ export function mountM3Habitat(
         </div>
 
         <p class="m3-habitat-instruction">
-          Tap the habitat to reposition food.
+          Tap the 3D habitat above to reposition food.
         </p>
       </section>
 
@@ -316,57 +324,6 @@ export function mountM3Habitat(
       </footer>
     </main>
   `;
-
-  const habitat =
-    requireElement(
-      root,
-      "[data-m3-habitat]",
-    );
-
-  habitat.addEventListener(
-    "click",
-    (
-      pointerEvent,
-    ) => {
-      const rect =
-        habitat.getBoundingClientRect();
-
-      if (
-        rect.width <=
-          0 ||
-        rect.height <=
-          0
-      ) {
-        return;
-      }
-
-      const fractionX =
-        (
-          pointerEvent.clientX -
-          rect.left
-        ) /
-        rect.width;
-
-      const fractionY =
-        (
-          pointerEvent.clientY -
-          rect.top
-        ) /
-        rect.height;
-
-      const worldPosition =
-        m3ViewportFractionToWorldPosition(
-          {
-            fractionX,
-            fractionY,
-          },
-        );
-
-      actions.onSelectWorldPosition(
-        worldPosition,
-      );
-    },
-  );
 
   const creature =
     requireElement(
