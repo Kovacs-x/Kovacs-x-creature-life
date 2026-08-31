@@ -231,14 +231,11 @@ export function createEmbodimentScene(
     createEmbodimentActorGraph();
 
   /*
-   * Capture the authored primitive body's
-   * neutral scale once.
+   * Capture authored neutral transforms once.
    *
-   * Animation samples are multipliers around
-   * this authored presentation shape.
-   *
-   * This avoids duplicating geometry constants
-   * in the animation system.
+   * Presentation animation multiplies these
+   * values rather than redefining actor
+   * geometry.
    */
   const creatureBodyNeutralScale = {
     x:
@@ -256,6 +253,46 @@ export function createEmbodimentScene(
     z:
       actors
         .creatureBody
+        .scale
+        .z,
+  } as const;
+
+  const leftEyeNeutralScale = {
+    x:
+      actors
+        .leftEye
+        .scale
+        .x,
+
+    y:
+      actors
+        .leftEye
+        .scale
+        .y,
+
+    z:
+      actors
+        .leftEye
+        .scale
+        .z,
+  } as const;
+
+  const rightEyeNeutralScale = {
+    x:
+      actors
+        .rightEye
+        .scale
+        .x,
+
+    y:
+      actors
+        .rightEye
+        .scale
+        .y,
+
+    z:
+      actors
+        .rightEye
         .scale
         .z,
   } as const;
@@ -381,6 +418,37 @@ export function createEmbodimentScene(
       );
 
       /*
+       * Blinking alters only eye geometry.
+       *
+       * It does not modify:
+       *
+       * - Creature perception;
+       * - food visibility;
+       * - facing;
+       * - cognition;
+       * - authoritative position.
+       */
+      actors.leftEye.scale.set(
+        leftEyeNeutralScale.x,
+
+        leftEyeNeutralScale.y *
+          animationSample
+            .blinkEyeScaleYMultiplier,
+
+        leftEyeNeutralScale.z,
+      );
+
+      actors.rightEye.scale.set(
+        rightEyeNeutralScale.x,
+
+        rightEyeNeutralScale.y *
+          animationSample
+            .blinkEyeScaleYMultiplier,
+
+        rightEyeNeutralScale.z,
+      );
+
+      /*
        * Facing remains exclusively rotation.y,
        * established by genuine displacement in
        * the actor graph.
@@ -462,6 +530,7 @@ export function createEmbodimentScene(
        * - interpolated X/Z;
        * - visual Y gait bob;
        * - breathing;
+       * - blinking;
        * - genuine-success eating reaction.
        */
       updateFrame(

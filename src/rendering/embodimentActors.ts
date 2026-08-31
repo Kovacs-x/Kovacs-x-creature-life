@@ -84,6 +84,19 @@ export interface EmbodimentActorGraph {
   readonly creatureDirectionalRoot:
     Group;
 
+  /*
+   * Exposed narrowly so presentation-only blink
+   * animation can change visual eye scale.
+   *
+   * Eye transforms never influence Creature
+   * sensing or cognition.
+   */
+  readonly leftEye:
+    Mesh;
+
+  readonly rightEye:
+    Mesh;
+
   readonly foodRoot:
     Group;
 
@@ -721,6 +734,8 @@ export function createEmbodimentActorGraph():
     creatureRoot,
     creatureBody,
     creatureDirectionalRoot,
+    leftEye,
+    rightEye,
     foodRoot,
     sensoryScreen,
     updatePresentation,
