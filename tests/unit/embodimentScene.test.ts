@@ -19,8 +19,107 @@ import {
   M3_EMBODIMENT_SCENE_BOUNDS,
 } from "../../src/rendering/embodimentCoordinates.js";
 
+import {
+  M3_PRESENTATION_MODEL_SCHEMA_VERSION,
+  type M3PresentationModel,
+} from "../../src/rendering/m3Presentation.js";
+
+function createPresentationModel():
+  M3PresentationModel {
+  return {
+    schemaVersion:
+      M3_PRESENTATION_MODEL_SCHEMA_VERSION,
+
+    tickIndex:
+      3,
+
+    simulationTimeSeconds:
+      3,
+
+    creature: {
+      position: {
+        x: 3,
+        y: 4,
+      },
+
+      motionState:
+        "moving",
+
+      distanceMoved:
+        1,
+
+      facingDirection: {
+        x: 0,
+        y: 1,
+      },
+
+      activityState:
+        "exploring",
+
+      movementSource:
+        "exploration",
+
+      energy:
+        77,
+
+      maxEnergy:
+        100,
+
+      energyFraction:
+        0.77,
+
+      hungerFraction:
+        0.23,
+    },
+
+    food: {
+      position: {
+        x: 8,
+        y: 6,
+      },
+
+      consumed:
+        false,
+
+      available:
+        true,
+    },
+
+    environment: {
+      foodPerceptionState:
+        "occluded",
+
+      foodDirectlyPerceived:
+        false,
+
+      foodMemoryState:
+        "decayed",
+
+      foodMemoryConfidence:
+        0.6,
+
+      foodMemoryAgeSeconds:
+        2,
+
+      sensoryOccluder: {
+        active:
+          true,
+
+        x:
+          5,
+
+        minY:
+          2,
+
+        maxY:
+          7,
+      },
+    },
+  };
+}
+
 describe(
-  "embodiment Three.js scene foundation",
+  "embodiment Three.js scene",
   () => {
     it(
       "creates the required presentation scene components",
@@ -59,6 +158,12 @@ describe(
           bundle.scene.children,
         ).toContain(
           bundle.directionalLight,
+        );
+
+        expect(
+          bundle.scene.children,
+        ).toContain(
+          bundle.actors.root,
         );
 
         bundle.dispose();
@@ -308,7 +413,84 @@ describe(
     );
 
     it(
-      "does not create any Creature, food, cognition, or simulation object in the E1 scene foundation",
+      "forwards the existing presentation model into the scene actor graph",
+      () => {
+        const bundle =
+          createEmbodimentScene(
+            1,
+          );
+
+        const model =
+          createPresentationModel();
+
+        bundle.updatePresentation(
+          model,
+        );
+
+        expect(
+          bundle
+            .actors
+            .creatureRoot
+            .position
+            .x,
+        ).toBeCloseTo(
+          model.creature.position.x,
+        );
+
+        expect(
+          bundle
+            .actors
+            .creatureRoot
+            .position
+            .z,
+        ).toBeCloseTo(
+          model.creature.position.y,
+        );
+
+        expect(
+          bundle
+            .actors
+            .foodRoot
+            .position
+            .x,
+        ).toBeCloseTo(
+          model.food.position.x,
+        );
+
+        expect(
+          bundle
+            .actors
+            .foodRoot
+            .position
+            .z,
+        ).toBeCloseTo(
+          model.food.position.y,
+        );
+
+        expect(
+          bundle
+            .actors
+            .creatureDirectionalRoot
+            .visible,
+        ).toBe(
+          true,
+        );
+
+        expect(
+          bundle
+            .actors
+            .sensoryScreen
+            .visible,
+        ).toBe(
+          true,
+        );
+
+        bundle.dispose();
+      },
+    );
+
+    it(
+      "places state-faithful actors in the presentation scene without adding cognition or simulation authority",
       () => {
         const bundle =
           createEmbodimentScene(
@@ -317,15 +499,33 @@ describe(
 
         expect(
           bundle.scene.getObjectByName(
-            "creature",
+            "embodiment-creature",
           ),
-        ).toBeUndefined();
+        ).toBe(
+          bundle
+            .actors
+            .creatureRoot,
+        );
 
         expect(
           bundle.scene.getObjectByName(
-            "food",
+            "embodiment-food",
           ),
-        ).toBeUndefined();
+        ).toBe(
+          bundle
+            .actors
+            .foodRoot,
+        );
+
+        expect(
+          bundle.scene.getObjectByName(
+            "embodiment-non-solid-sensory-screen",
+          ),
+        ).toBe(
+          bundle
+            .actors
+            .sensoryScreen,
+        );
 
         expect(
           bundle.scene.getObjectByName(

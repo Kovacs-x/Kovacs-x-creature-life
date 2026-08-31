@@ -68,12 +68,16 @@ import {
  *   ->
  * deriveM3PresentationModel(...)
  *   ->
- * browser presentation
+ * presentation consumers
  *
- * The new Three.js renderer is deliberately
- * mounted beside the existing M3 DOM UI rather
- * than inside the DOM subtree that
- * mountM3Habitat(...) currently rebuilds.
+ * The same presentation model is now consumed
+ * by:
+ *
+ * - the persistent Three.js renderer;
+ * - the existing M3 DOM presentation.
+ *
+ * The Three.js renderer does not receive raw
+ * simulation state.
  *
  * Browser root
  *   |
@@ -169,6 +173,19 @@ function renderState(
       previous,
       evidence,
     );
+
+  /*
+   * The Three.js scene receives only the same
+   * already-derived presentation model used by
+   * the existing browser presentation.
+   *
+   * It does not receive current, previous,
+   * evidence, brain state, RNG state or memory
+   * internals directly.
+   */
+  threeRenderer.updatePresentation(
+    presentation,
+  );
 
   /*
    * Existing M3 DOM presentation continues to
@@ -434,7 +451,7 @@ function createEmbodimentBrowserShell(
     "embodiment-foundation-title";
 
   title.textContent =
-    "3D habitat foundation";
+    "Persistent 3D habitat";
 
   const description =
     document.createElement(
@@ -445,7 +462,7 @@ function createEmbodimentBrowserShell(
     "embodiment-foundation-description";
 
   description.textContent =
-    "Presentation-only Three.js floor, bounds, camera and lighting. Creature and food meshes are intentionally not connected yet.";
+    "The Creature, food and non-solid sensory screen below are driven only by the existing M3 presentation model.";
 
   headingText.append(
     eyebrow,
@@ -462,7 +479,7 @@ function createEmbodimentBrowserShell(
     "embodiment-foundation-badge";
 
   badge.textContent =
-    "E1";
+    "E2";
 
   heading.append(
     headingText,
@@ -491,7 +508,7 @@ function createEmbodimentBrowserShell(
     "embodiment-foundation-note";
 
   note.textContent =
-    "This visual frame loop does not advance simulation or consume Creature RNG.";
+    "The visual frame loop renders presentation state only; authoritative simulation still advances exclusively through the M3 controller.";
 
   foundationPanel.append(
     heading,

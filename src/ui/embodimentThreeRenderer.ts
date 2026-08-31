@@ -5,6 +5,10 @@ import {
   type Scene,
 } from "three";
 
+import type {
+  M3PresentationModel,
+} from "../rendering/m3Presentation.js";
+
 import {
   createEmbodimentScene,
 } from "../rendering/embodimentScene.js";
@@ -30,6 +34,9 @@ import {
  * - sample simulation RNG;
  * - choose an action;
  * - move authoritative Creature/world state.
+ *
+ * State updates enter only as an already-derived
+ * M3PresentationModel.
  */
 
 export interface EmbodimentThreeRenderer {
@@ -41,6 +48,17 @@ export interface EmbodimentThreeRenderer {
 
   readonly camera:
     PerspectiveCamera;
+
+  /*
+   * Forward one already-derived presentation
+   * model into the state-faithful Three.js
+   * actor graph.
+   */
+  readonly updatePresentation:
+    (
+      model:
+        M3PresentationModel,
+    ) => void;
 
   /*
    * Render the current presentation scene once.
@@ -155,6 +173,12 @@ export function mountEmbodimentThreeRenderer(
         return;
       }
 
+      /*
+       * Render only.
+       *
+       * No simulation tick is called from this
+       * frame loop.
+       */
       renderer.render(
         sceneBundle.scene,
         sceneBundle.camera,
@@ -180,6 +204,20 @@ export function mountEmbodimentThreeRenderer(
 
     camera:
       sceneBundle.camera,
+
+    updatePresentation: (
+      model,
+    ) => {
+      if (
+        disposed
+      ) {
+        return;
+      }
+
+      sceneBundle.updatePresentation(
+        model,
+      );
+    },
 
     renderOnce: () => {
       if (

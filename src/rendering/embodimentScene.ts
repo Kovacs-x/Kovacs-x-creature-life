@@ -13,30 +13,43 @@ import {
   Vector3,
 } from "three";
 
+import type {
+  M3PresentationModel,
+} from "./m3Presentation.js";
+
+import {
+  createEmbodimentActorGraph,
+  type EmbodimentActorGraph,
+} from "./embodimentActors.js";
+
 import {
   EMBODIMENT_GROUND_Y,
   M3_EMBODIMENT_SCENE_BOUNDS,
 } from "./embodimentCoordinates.js";
 
 /*
- * EMBODIMENT THREE.JS SCENE FOUNDATION
+ * EMBODIMENT THREE.JS SCENE
  *
- * This module constructs presentation geometry
- * only.
+ * The accepted M3 simulation remains the sole
+ * authority for Creature/world state.
  *
- * It does not:
+ * Authoritative simulation
+ *   ->
+ * M3PresentationModel
+ *   ->
+ * updatePresentation(...)
+ *   ->
+ * Three.js actor transforms
+ *
+ * This module does not:
  *
  * - advance simulation;
  * - evaluate cognition;
  * - select actions;
- * - move the authoritative Creature;
- * - move authoritative food;
- * - inspect memory;
- * - inspect hidden targets;
+ * - create memory;
+ * - alter learning;
+ * - inspect hidden targets for behaviour;
  * - consume simulation RNG.
- *
- * The accepted M3 simulation remains the sole
- * authority for Creature/world state.
  */
 
 export const EMBODIMENT_CAMERA_FOV_DEGREES =
@@ -100,6 +113,26 @@ export interface EmbodimentSceneBundle {
 
   readonly directionalLight:
     DirectionalLight;
+
+  /*
+   * State-faithful Three.js Creature,
+   * food and sensory-screen presentation.
+   */
+  readonly actors:
+    EmbodimentActorGraph;
+
+  /*
+   * The browser supplies only an already-derived
+   * presentation model.
+   *
+   * No authoritative simulation state is owned
+   * here.
+   */
+  readonly updatePresentation:
+    (
+      model:
+        M3PresentationModel,
+    ) => void;
 
   /*
    * Release GPU-backed geometry/material
@@ -168,12 +201,16 @@ export function createEmbodimentScene(
       3,
   );
 
+  const actors =
+    createEmbodimentActorGraph();
+
   scene.add(
     camera,
     floor,
     boundary,
     hemisphereLight,
     directionalLight,
+    actors.root,
   );
 
   return {
@@ -183,8 +220,19 @@ export function createEmbodimentScene(
     boundary,
     hemisphereLight,
     directionalLight,
+    actors,
+
+    updatePresentation: (
+      model,
+    ) => {
+      actors.updatePresentation(
+        model,
+      );
+    },
 
     dispose: () => {
+      actors.dispose();
+
       floor.geometry.dispose();
       floor.material.dispose();
 
