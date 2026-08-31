@@ -16,13 +16,14 @@ import {
 /*
  * EMBODIMENT WEBGL RENDERER
  *
- * This is a browser presentation loop only.
+ * requestAnimationFrame is a presentation loop.
  *
- * requestAnimationFrame here may:
+ * It may:
  *
- * - render the Three.js scene;
- * - later support presentation interpolation;
- * - later support presentation-only animation.
+ * - sample locomotion interpolation;
+ * - later animate presentation-only idle life;
+ * - later update camera controls;
+ * - render.
  *
  * It must never:
  *
@@ -35,8 +36,8 @@ import {
  * - choose an action;
  * - move authoritative Creature/world state.
  *
- * State updates enter only as an already-derived
- * M3PresentationModel.
+ * RAF timestamp is used only as absolute
+ * presentation time.
  */
 
 export interface EmbodimentThreeRenderer {
@@ -49,29 +50,15 @@ export interface EmbodimentThreeRenderer {
   readonly camera:
     PerspectiveCamera;
 
-  /*
-   * Forward one already-derived presentation
-   * model into the state-faithful Three.js
-   * actor graph.
-   */
   readonly updatePresentation:
     (
       model:
         M3PresentationModel,
     ) => void;
 
-  /*
-   * Render the current presentation scene once.
-   *
-   * This performs no simulation work.
-   */
   readonly renderOnce:
     () => void;
 
-  /*
-   * Stop the presentation frame loop and
-   * release browser/Three.js resources.
-   */
   readonly dispose:
     () => void;
 }
@@ -128,11 +115,6 @@ export function mountEmbodimentThreeRenderer(
     "Creature Life three-dimensional embodiment habitat",
   );
 
-  /*
-   * The container owns this presentation
-   * canvas. No simulation state is stored in
-   * the DOM.
-   */
   container.replaceChildren(
     renderer.domElement,
   );
@@ -166,18 +148,37 @@ export function mountEmbodimentThreeRenderer(
   );
 
   const renderFrame =
-    (): void => {
+    (
+      frameTimeMilliseconds:
+        number,
+    ): void => {
       if (
         disposed
       ) {
         return;
       }
 
+      const presentationTimeSeconds =
+        millisecondsToSeconds(
+          frameTimeMilliseconds,
+        );
+
+      /*
+       * Presentation-only interpolation.
+       *
+       * The number of RAF calls cannot accumulate
+       * additional movement because updateFrame
+       * samples from absolute time.
+       */
+      sceneBundle.updateFrame(
+        presentationTimeSeconds,
+      );
+
       /*
        * Render only.
        *
-       * No simulation tick is called from this
-       * frame loop.
+       * There is no simulation tick anywhere in
+       * this RAF path.
        */
       renderer.render(
         sceneBundle.scene,
@@ -214,8 +215,16 @@ export function mountEmbodimentThreeRenderer(
         return;
       }
 
+      /*
+       * performance.now() and RAF timestamps use
+       * the same browser performance time origin.
+       *
+       * This time is presentation-only and never
+       * becomes simulation time.
+       */
       sceneBundle.updatePresentation(
         model,
+        readPresentationTimeSeconds(),
       );
     },
 
@@ -225,6 +234,10 @@ export function mountEmbodimentThreeRenderer(
       ) {
         return;
       }
+
+      sceneBundle.updateFrame(
+        readPresentationTimeSeconds(),
+      );
 
       renderer.render(
         sceneBundle.scene,
@@ -300,14 +313,6 @@ function resizeRenderer(
   );
 }
 
-/*
- * Zero-sized elements can occur briefly while
- * browser layout is settling.
- *
- * A one-pixel presentation fallback avoids an
- * invalid camera aspect ratio without changing
- * authoritative habitat geometry.
- */
 function readViewportSize(
   container:
     HTMLElement,
@@ -333,13 +338,6 @@ function readViewportSize(
   };
 }
 
-/*
- * Device pixel density is strictly a visual
- * concern.
- *
- * Capping it prevents unnecessary GPU load on
- * very high-density mobile displays.
- */
 function readPresentationPixelRatio():
   number {
   const devicePixelRatio =
@@ -359,5 +357,22 @@ function readPresentationPixelRatio():
       1,
       devicePixelRatio,
     ),
+  );
+}
+
+function readPresentationTimeSeconds():
+  number {
+  return millisecondsToSeconds(
+    performance.now(),
+  );
+}
+
+function millisecondsToSeconds(
+  milliseconds:
+    number,
+): number {
+  return (
+    milliseconds /
+    1000
   );
 }

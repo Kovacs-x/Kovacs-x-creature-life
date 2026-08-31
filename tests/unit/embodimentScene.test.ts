@@ -20,44 +20,102 @@ import {
 } from "../../src/rendering/embodimentCoordinates.js";
 
 import {
+  EMBODIMENT_LOCOMOTION_DURATION_SECONDS,
+} from "../../src/rendering/embodimentLocomotion.js";
+
+import {
   M3_PRESENTATION_MODEL_SCHEMA_VERSION,
   type M3PresentationModel,
+  type M3PresentationVector,
 } from "../../src/rendering/m3Presentation.js";
 
-function createPresentationModel():
-  M3PresentationModel {
+interface PresentationOptions {
+  readonly tickIndex?:
+    number;
+
+  readonly simulationTimeSeconds?:
+    number;
+
+  readonly creatureX?:
+    number;
+
+  readonly creatureY?:
+    number;
+
+  readonly moving?:
+    boolean;
+
+  readonly distanceMoved?:
+    number;
+
+  readonly facingDirection?:
+    M3PresentationVector;
+}
+
+function createPresentationModel(
+  options:
+    PresentationOptions = {},
+): M3PresentationModel {
+  const moving =
+    options.moving ??
+    true;
+
   return {
     schemaVersion:
       M3_PRESENTATION_MODEL_SCHEMA_VERSION,
 
     tickIndex:
+      options.tickIndex ??
       3,
 
     simulationTimeSeconds:
+      options.simulationTimeSeconds ??
       3,
 
     creature: {
       position: {
-        x: 3,
-        y: 4,
+        x:
+          options.creatureX ??
+          3,
+
+        y:
+          options.creatureY ??
+          4,
       },
 
       motionState:
-        "moving",
+        moving
+          ? "moving"
+          : "stationary",
 
       distanceMoved:
-        1,
+        options.distanceMoved ??
+        (
+          moving
+            ? 1
+            : 0
+        ),
 
-      facingDirection: {
-        x: 0,
-        y: 1,
-      },
+      facingDirection:
+        moving
+          ? (
+              options.facingDirection ??
+              {
+                x: 0,
+                y: 1,
+              }
+            )
+          : null,
 
       activityState:
-        "exploring",
+        moving
+          ? "exploring"
+          : "idle",
 
       movementSource:
-        "exploration",
+        moving
+          ? "exploration"
+          : null,
 
       energy:
         77,
@@ -413,7 +471,7 @@ describe(
     );
 
     it(
-      "forwards the existing presentation model into the scene actor graph",
+      "snaps the initial Creature presentation exactly to its authoritative position",
       () => {
         const bundle =
           createEmbodimentScene(
@@ -425,6 +483,7 @@ describe(
 
         bundle.updatePresentation(
           model,
+          10,
         );
 
         expect(
@@ -490,6 +549,398 @@ describe(
     );
 
     it(
+      "interpolates displayed Creature X/Z between consecutive genuine authoritative movement positions",
+      () => {
+        const bundle =
+          createEmbodimentScene(
+            1,
+          );
+
+        bundle.updatePresentation(
+          createPresentationModel(
+            {
+              tickIndex:
+                0,
+
+              simulationTimeSeconds:
+                0,
+
+              creatureX:
+                2,
+
+              creatureY:
+                3,
+
+              moving:
+                false,
+            },
+          ),
+          0,
+        );
+
+        bundle.updatePresentation(
+          createPresentationModel(
+            {
+              tickIndex:
+                1,
+
+              simulationTimeSeconds:
+                1,
+
+              creatureX:
+                4,
+
+              creatureY:
+                3,
+
+              moving:
+                true,
+
+              distanceMoved:
+                2,
+
+              facingDirection: {
+                x: 1,
+                y: 0,
+              },
+            },
+          ),
+          1,
+        );
+
+        /*
+         * At the authoritative update instant,
+         * the displayed Creature remains at the
+         * visual transition start.
+         */
+        expect(
+          bundle
+            .actors
+            .creatureRoot
+            .position
+            .x,
+        ).toBeCloseTo(
+          2,
+        );
+
+        expect(
+          bundle
+            .actors
+            .creatureRoot
+            .position
+            .z,
+        ).toBeCloseTo(
+          3,
+        );
+
+        bundle.updateFrame(
+          1 +
+          EMBODIMENT_LOCOMOTION_DURATION_SECONDS /
+            2,
+        );
+
+        expect(
+          bundle
+            .actors
+            .creatureRoot
+            .position
+            .x,
+        ).toBeCloseTo(
+          3,
+        );
+
+        expect(
+          bundle
+            .actors
+            .creatureRoot
+            .position
+            .z,
+        ).toBeCloseTo(
+          3,
+        );
+
+        bundle.updateFrame(
+          1 +
+          EMBODIMENT_LOCOMOTION_DURATION_SECONDS,
+        );
+
+        expect(
+          bundle
+            .actors
+            .creatureRoot
+            .position
+            .x,
+        ).toBeCloseTo(
+          4,
+        );
+
+        expect(
+          bundle
+            .actors
+            .creatureRoot
+            .position
+            .z,
+        ).toBeCloseTo(
+          3,
+        );
+
+        bundle.dispose();
+      },
+    );
+
+    it(
+      "does not accumulate additional Creature movement from repeated frame sampling",
+      () => {
+        const bundle =
+          createEmbodimentScene(
+            1,
+          );
+
+        bundle.updatePresentation(
+          createPresentationModel(
+            {
+              tickIndex:
+                0,
+
+              simulationTimeSeconds:
+                0,
+
+              creatureX:
+                2,
+
+              creatureY:
+                3,
+
+              moving:
+                false,
+            },
+          ),
+          0,
+        );
+
+        bundle.updatePresentation(
+          createPresentationModel(
+            {
+              tickIndex:
+                1,
+
+              simulationTimeSeconds:
+                1,
+
+              creatureX:
+                6,
+
+              creatureY:
+                3,
+
+              moving:
+                true,
+
+              distanceMoved:
+                4,
+
+              facingDirection: {
+                x: 1,
+                y: 0,
+              },
+            },
+          ),
+          1,
+        );
+
+        const targetTime =
+          1 +
+          EMBODIMENT_LOCOMOTION_DURATION_SECONDS /
+            2;
+
+        for (
+          let frame = 0;
+          frame <= 15;
+          frame += 1
+        ) {
+          bundle.updateFrame(
+            1 +
+            (
+              targetTime -
+              1
+            ) *
+            (
+              frame /
+              15
+            ),
+          );
+        }
+
+        const sampledAfterManyFrames = {
+          x:
+            bundle
+              .actors
+              .creatureRoot
+              .position
+              .x,
+
+          z:
+            bundle
+              .actors
+              .creatureRoot
+              .position
+              .z,
+        };
+
+        /*
+         * Re-sampling the same absolute time
+         * cannot move the Creature any farther.
+         */
+        bundle.updateFrame(
+          targetTime,
+        );
+
+        expect(
+          bundle
+            .actors
+            .creatureRoot
+            .position
+            .x,
+        ).toBeCloseTo(
+          sampledAfterManyFrames.x,
+        );
+
+        expect(
+          bundle
+            .actors
+            .creatureRoot
+            .position
+            .z,
+        ).toBeCloseTo(
+          sampledAfterManyFrames.z,
+        );
+
+        expect(
+          bundle
+            .actors
+            .creatureRoot
+            .position
+            .x,
+        ).toBeCloseTo(
+          4,
+        );
+
+        bundle.dispose();
+      },
+    );
+
+    it(
+      "updates non-locomotion world presentation immediately while Creature locomotion is still interpolating",
+      () => {
+        const bundle =
+          createEmbodimentScene(
+            1,
+          );
+
+        bundle.updatePresentation(
+          createPresentationModel(
+            {
+              tickIndex:
+                0,
+
+              simulationTimeSeconds:
+                0,
+
+              creatureX:
+                2,
+
+              creatureY:
+                3,
+
+              moving:
+                false,
+            },
+          ),
+          0,
+        );
+
+        const moved =
+          createPresentationModel(
+            {
+              tickIndex:
+                1,
+
+              simulationTimeSeconds:
+                1,
+
+              creatureX:
+                4,
+
+              creatureY:
+                3,
+
+              moving:
+                true,
+
+              distanceMoved:
+                2,
+
+              facingDirection: {
+                x: 1,
+                y: 0,
+              },
+            },
+          );
+
+        bundle.updatePresentation(
+          moved,
+          1,
+        );
+
+        expect(
+          bundle
+            .actors
+            .creatureRoot
+            .position
+            .x,
+        ).toBeCloseTo(
+          2,
+        );
+
+        /*
+         * Food and sensory state are factual
+         * current-world presentation and are not
+         * locomotion-interpolated.
+         */
+        expect(
+          bundle
+            .actors
+            .foodRoot
+            .position
+            .x,
+        ).toBeCloseTo(
+          moved.food.position.x,
+        );
+
+        expect(
+          bundle
+            .actors
+            .foodRoot
+            .position
+            .z,
+        ).toBeCloseTo(
+          moved.food.position.y,
+        );
+
+        expect(
+          bundle
+            .actors
+            .sensoryScreen
+            .visible,
+        ).toBe(
+          true,
+        );
+
+        bundle.dispose();
+      },
+    );
+
+    it(
       "places state-faithful actors in the presentation scene without adding cognition or simulation authority",
       () => {
         const bundle =
@@ -538,6 +989,58 @@ describe(
             "simulation",
           ),
         ).toBeUndefined();
+
+        bundle.dispose();
+      },
+    );
+
+    it(
+      "allows frame updates before the first presentation model without inventing a Creature transition",
+      () => {
+        const bundle =
+          createEmbodimentScene(
+            1,
+          );
+
+        const positionBefore = {
+          x:
+            bundle
+              .actors
+              .creatureRoot
+              .position
+              .x,
+
+          z:
+            bundle
+              .actors
+              .creatureRoot
+              .position
+              .z,
+        };
+
+        bundle.updateFrame(
+          100,
+        );
+
+        expect(
+          bundle
+            .actors
+            .creatureRoot
+            .position
+            .x,
+        ).toBe(
+          positionBefore.x,
+        );
+
+        expect(
+          bundle
+            .actors
+            .creatureRoot
+            .position
+            .z,
+        ).toBe(
+          positionBefore.z,
+        );
 
         bundle.dispose();
       },

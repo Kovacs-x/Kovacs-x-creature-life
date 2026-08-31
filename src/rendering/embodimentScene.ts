@@ -23,6 +23,13 @@ import {
 } from "./embodimentActors.js";
 
 import {
+  advanceEmbodimentLocomotionState,
+  createEmbodimentLocomotionState,
+  sampleEmbodimentLocomotion,
+  type EmbodimentLocomotionState,
+} from "./embodimentLocomotion.js";
+
+import {
   EMBODIMENT_GROUND_Y,
   M3_EMBODIMENT_SCENE_BOUNDS,
 } from "./embodimentCoordinates.js";
@@ -39,9 +46,16 @@ import {
  *   ->
  * updatePresentation(...)
  *   ->
+ * presentation interpolation
+ *   ->
+ * updateFrame(...)
+ *   ->
  * Three.js actor transforms
  *
- * This module does not:
+ * Locomotion interpolation is presentation
+ * state only.
+ *
+ * It must never:
  *
  * - advance simulation;
  * - evaluate cognition;
@@ -114,30 +128,42 @@ export interface EmbodimentSceneBundle {
   readonly directionalLight:
     DirectionalLight;
 
-  /*
-   * State-faithful Three.js Creature,
-   * food and sensory-screen presentation.
-   */
   readonly actors:
     EmbodimentActorGraph;
 
   /*
-   * The browser supplies only an already-derived
-   * presentation model.
+   * Accept a newly derived authoritative
+   * presentation model at an absolute
+   * presentation timestamp.
    *
-   * No authoritative simulation state is owned
-   * here.
+   * The actor graph receives factual state
+   * immediately.
+   *
+   * Creature X/Z may then be visually
+   * interpolated between authoritative
+   * endpoints.
    */
   readonly updatePresentation:
     (
       model:
         M3PresentationModel,
+
+      presentationTimeSeconds:
+        number,
     ) => void;
 
   /*
-   * Release GPU-backed geometry/material
-   * resources owned by this scene bundle.
+   * Advance presentation-only visual state to
+   * the supplied absolute presentation time.
+   *
+   * This never advances simulation time.
    */
+  readonly updateFrame:
+    (
+      presentationTimeSeconds:
+        number,
+    ) => void;
+
   readonly dispose:
     () => void;
 }
@@ -213,6 +239,50 @@ export function createEmbodimentScene(
     actors.root,
   );
 
+  /*
+   * This state stores only presentation
+   * interpolation endpoints/timing.
+   *
+   * The authoritative Creature position remains
+   * in M3 simulation state and presentation
+   * models.
+   */
+  let locomotionState:
+    EmbodimentLocomotionState | null =
+      null;
+
+  const updateFrame =
+    (
+      presentationTimeSeconds:
+        number,
+    ): void => {
+      if (
+        locomotionState ===
+        null
+      ) {
+        return;
+      }
+
+      const sample =
+        sampleEmbodimentLocomotion(
+          locomotionState,
+          presentationTimeSeconds,
+        );
+
+      /*
+       * Only displayed planar position is
+       * modified here.
+       *
+       * Y remains presentation-only body height,
+       * and nothing flows back into simulation.
+       */
+      actors.creatureRoot.position.x =
+        sample.position.x;
+
+      actors.creatureRoot.position.z =
+        sample.position.z;
+    };
+
   return {
     scene,
     camera,
@@ -224,11 +294,49 @@ export function createEmbodimentScene(
 
     updatePresentation: (
       model,
+      presentationTimeSeconds,
     ) => {
+      if (
+        locomotionState ===
+        null
+      ) {
+        locomotionState =
+          createEmbodimentLocomotionState(
+            model,
+            presentationTimeSeconds,
+          );
+      } else {
+        locomotionState =
+          advanceEmbodimentLocomotionState(
+            locomotionState,
+            model,
+            presentationTimeSeconds,
+          );
+      }
+
+      /*
+       * Actor update handles factual
+       * presentation properties:
+       *
+       * - authoritative target position;
+       * - genuine displacement-derived facing;
+       * - food;
+       * - sensory screen.
+       *
+       * updateFrame(...) immediately replaces
+       * only Creature X/Z with the appropriate
+       * visual interpolation sample.
+       */
       actors.updatePresentation(
         model,
       );
+
+      updateFrame(
+        presentationTimeSeconds,
+      );
     },
+
+    updateFrame,
 
     dispose: () => {
       actors.dispose();
@@ -334,13 +442,6 @@ function createHabitatBoundary():
     BufferGeometry,
     LineBasicMaterial
   > {
-  /*
-   * These points correspond exactly to the
-   * authoritative M3 habitat corners.
-   *
-   * The tiny positive Y offset only prevents
-   * presentation z-fighting with the floor.
-   */
   const points = [
     new Vector3(
       M3_EMBODIMENT_SCENE_BOUNDS.minX,
