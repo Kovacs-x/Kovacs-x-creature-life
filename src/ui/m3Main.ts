@@ -22,9 +22,22 @@ import {
   type M3LifeHistory,
 } from "../simulation/core/m3LifeHistory.js";
 
+import type { M3PlayerFoodWorldEvent } from "../simulation/core/m3PlayerWorld.js";
+
+import {
+  createM3PersistentRunState,
+} from "../simulation/core/m3Persistence.js";
+
+import {
+  loadM3PersistentRunFromStorage,
+  saveM3PersistentRunToStorage,
+} from "../persistence/browserRunStorage.js";
+
 import {
   createBrowserM3TickScheduler,
   M3ApplicationController,
+  restoreM3ApplicationController,
+  type M3ControllerCallbacks,
 } from "./m3Controller.js";
 
 import {
@@ -164,9 +177,6 @@ window.addEventListener(
   },
 );
 
-const initialState =
-  createInitialM3State();
-
 let controlView:
   M3ControlView | null =
     null;
@@ -174,6 +184,10 @@ let controlView:
 let lifeHistory:
   M3LifeHistory =
     createM3LifeHistory();
+
+let playerWorldEvents:
+  readonly M3PlayerFoodWorldEvent[] =
+    [];
 
 let controller:
   M3ApplicationController;
@@ -280,95 +294,213 @@ function renderState(
   );
 }
 
-controller =
-  new M3ApplicationController(
-    initialState,
+/*
+ * E5 SAVE POINT
+ *
+ * existing authoritative state
+ *   -> existing M3PersistentRunState
+ *   -> existing serializeM3PersistentRun(...)
+ *   -> browser storage
+ *
+ * This is called only downstream of an already-
+ * completed authoritative change (a completed
+ * simulation tick, a genuine player food
+ * placement, or an explicit reset). It performs
+ * no simulation work itself: controller.getState()
+ * and controller.getNextEventSequence() are
+ * already updated by the time this runs, and this
+ * function never triggers another authoritative
+ * change.
+ */
+function persistCurrentRun():
+  void {
+  const run =
+    createM3PersistentRunState(
+      {
+        acquisitionState:
+          controller.getState(),
 
-    createBrowserM3TickScheduler(),
+        lifeHistory,
 
-    {
-      onStateTransition: (
-        previous,
-        current,
-        evidence,
-      ) => {
-        /*
-         * The biography observer only reads
-         * already-completed authoritative tick
-         * evidence. It cannot alter simulation
-         * state.
-         */
-        lifeHistory =
-          observeM3TickForLifeHistory(
-            lifeHistory,
-            evidence,
-          );
+        playerWorldEvents,
 
-        renderState(
-          current,
-          previous,
+        nextPlayerEventSequence:
+          controller.getNextEventSequence(),
+      },
+    );
+
+  saveM3PersistentRunToStorage(
+    window.localStorage,
+
+    run,
+  );
+}
+
+const controllerCallbacks:
+  M3ControllerCallbacks = {
+    onStateTransition: (
+      previous,
+      current,
+      evidence,
+    ) => {
+      /*
+       * The biography observer only reads
+       * already-completed authoritative tick
+       * evidence. It cannot alter simulation
+       * state.
+       */
+      lifeHistory =
+        observeM3TickForLifeHistory(
+          lifeHistory,
           evidence,
         );
-      },
 
-      onPlayerFoodPlacement: (
+      persistCurrentRun();
+
+      renderState(
+        current,
         previous,
-        current,
-        event,
-      ) => {
-        lifeHistory =
-          observeM3PlayerWorldEventForLifeHistory(
-            lifeHistory,
-            event,
-          );
-
-        /*
-         * Placement is a same-tick external
-         * world update: no tick evidence exists
-         * for this transition.
-         */
-        renderState(
-          current,
-          previous,
-          null,
-        );
-      },
-
-      onStateReset: (
-        current,
-      ) => {
-        /*
-         * Reset starts a new run. The
-         * player-facing biography restarts
-         * with it.
-         *
-         * The presentation-only Three.js
-         * renderer remains mounted because
-         * resetting the Creature does not mean
-         * recreating the browser renderer.
-         */
-        lifeHistory =
-          createM3LifeHistory();
-
-        renderState(
-          current,
-          null,
-          null,
-        );
-      },
-
-      onModeChange: (
-        mode,
-      ) => {
-        controlView?.setMode(
-          mode,
-        );
-      },
+        evidence,
+      );
     },
+
+    onPlayerFoodPlacement: (
+      previous,
+      current,
+      event,
+    ) => {
+      lifeHistory =
+        observeM3PlayerWorldEventForLifeHistory(
+          lifeHistory,
+          event,
+        );
+
+      playerWorldEvents = [
+        ...playerWorldEvents,
+        event,
+      ];
+
+      persistCurrentRun();
+
+      /*
+       * Placement is a same-tick external
+       * world update: no tick evidence exists
+       * for this transition.
+       */
+      renderState(
+        current,
+        previous,
+        null,
+      );
+    },
+
+    onStateReset: (
+      current,
+    ) => {
+      /*
+       * Reset starts a new run. The
+       * player-facing biography and the
+       * player-world event history both
+       * restart with it, and the deterministic
+       * external event sequence is already
+       * reset through the existing controller.
+       *
+       * The presentation-only Three.js
+       * renderer remains mounted because
+       * resetting the Creature does not mean
+       * recreating the browser renderer.
+       */
+      lifeHistory =
+        createM3LifeHistory();
+
+      playerWorldEvents =
+        [];
+
+      persistCurrentRun();
+
+      renderState(
+        current,
+        null,
+        null,
+      );
+    },
+
+    onModeChange: (
+      mode,
+    ) => {
+      controlView?.setMode(
+        mode,
+      );
+    },
+  };
+
+/*
+ * E5 BOOTSTRAP
+ *
+ * browser storage
+ *   -> attempt to load existing persistent run
+ *
+ * valid persisted run
+ *   -> restore that exact run through the
+ *      existing restoreM3ApplicationController(...)
+ *      boundary
+ *
+ * missing storage
+ *   -> create the existing fresh browser
+ *      Creature configuration
+ *
+ * invalid persisted data
+ *   -> explicitly reported and never partially
+ *      used; the same fresh configuration is
+ *      used as a narrow fallback
+ */
+const loadResult =
+  loadM3PersistentRunFromStorage(
+    window.localStorage,
   );
 
+if (
+  loadResult.status ===
+  "valid"
+) {
+  lifeHistory =
+    loadResult.run
+      .lifeHistory;
+
+  playerWorldEvents =
+    loadResult.run
+      .playerWorldEvents;
+
+  controller =
+    restoreM3ApplicationController(
+      loadResult.run,
+
+      createBrowserM3TickScheduler(),
+
+      controllerCallbacks,
+    );
+} else {
+  if (
+    loadResult.status ===
+    "invalid"
+  ) {
+    console.warn(
+      `Discarding invalid persisted M3 run: ${loadResult.reason}`,
+    );
+  }
+
+  controller =
+    new M3ApplicationController(
+      createInitialM3State(),
+
+      createBrowserM3TickScheduler(),
+
+      controllerCallbacks,
+    );
+}
+
 renderState(
-  initialState,
+  controller.getState(),
   null,
   null,
 );
